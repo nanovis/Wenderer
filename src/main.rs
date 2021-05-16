@@ -122,7 +122,7 @@ impl State {
                 count: 1,                         // not using multisampling
                 mask: !0,                         // use all samples
                 alpha_to_coverage_enabled: false, // related to anti-aliasing, not using for now
-            },
+            }, // the config of this struct is the same as wgpu::MultisampleState::default()
         });
         Self {
             surface,
