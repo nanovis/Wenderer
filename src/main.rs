@@ -12,6 +12,7 @@ struct State {
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     size: winit::dpi::PhysicalSize<u32>,
+    clear_color: (f64, f64, f64, f64),
 }
 
 impl State {
@@ -57,6 +58,7 @@ impl State {
             sc_desc,
             swap_chain,
             size,
+            clear_color: (0.1, 0.2, 0.3, 1.0),
         }
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
@@ -70,7 +72,18 @@ impl State {
     // input() returns a bool to indicate whether an event has been fully processed.
     // If the method returns true, the main loop won't process the event any further.
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false // for now
+        match event {
+            WindowEvent::CursorMoved { position, .. } => {
+                if position.x > (self.size.width / 2) as f64 {
+                    self.clear_color = (0.3, 0.2, 0.1, 1.0);
+                } else {
+                    self.clear_color = (0.1, 0.2, 0.3, 1.0);
+                }
+                return true;
+            }
+            _ => {}
+        }
+        return false;
     }
     fn update(&mut self) {
         // nothing for now
@@ -88,15 +101,20 @@ impl State {
 
         let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
+            // color_attachments describe where we are going to draw our color to
             color_attachments: &[wgpu::RenderPassColorAttachment {
+                //view informs wgpu what texture to save the colors to
                 view: &frame.view,
+                // The resolve_target is the texture that will receive the resolved output.
+                // This will be the same as `view` unless multisampling is enabled
                 resolve_target: None,
                 ops: wgpu::Operations {
+                    // The load field tells wgpu how to handle colors stored from the previous frame
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
-                        a: 1.0,
+                        r: self.clear_color.0,
+                        g: self.clear_color.1,
+                        b: self.clear_color.2,
+                        a: self.clear_color.3,
                     }),
                     store: true,
                 },
