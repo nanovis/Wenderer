@@ -8,6 +8,8 @@ pub struct Vertex {
     pub color: [f32; 3],
 }
 
+// TODO: take out the below method and create a new struct called VertexBuffer for rendering
+// TODO: refactor all codes related to rendering, refactor around State in main.rs
 impl Vertex {
     ///
     /// Returns the descriptor for using vertex buffer in render pipeline
