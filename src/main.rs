@@ -101,7 +101,7 @@ impl State {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false }, // FIXME: ???
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
@@ -110,7 +110,7 @@ impl State {
                         visibility: wgpu::ShaderStage::FRAGMENT,
                         ty: wgpu::BindingType::Sampler {
                             comparison: false, // mostly for depth texture
-                            filtering: true,   // FIXME: ???
+                            filtering: true,
                         },
                         count: None,
                     },
