@@ -1,9 +1,26 @@
 use futures::executor::block_on;
+use wenderer::data::Vertex;
+use wgpu::util::DeviceExt;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
+
+const VERTICES: &[Vertex; 3] = &[
+    Vertex {
+        position: [0.0, 0.5, 0.0],
+        color: [1.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [-0.5, -0.5, 0.0],
+        color: [0.0, 1.0, 0.0],
+    },
+    Vertex {
+        position: [0.5, -0.5, 0.0],
+        color: [0.0, 0.0, 1.0],
+    },
+];
 
 struct State {
     surface: wgpu::Surface,
@@ -14,6 +31,8 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     clear_color: (f64, f64, f64, f64),
     render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    num_vertices: u32,
 }
 
 impl State {
@@ -52,6 +71,14 @@ impl State {
             present_mode: wgpu::PresentMode::Fifo,
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
+        // create vertex buffer
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(VERTICES),
+            usage: wgpu::BufferUsage::VERTEX,
+        });
+
+        // create render pipeline with shaders
         let vs_module =
             device.create_shader_module(&wgpu::include_spirv!("shaders/shader.vert.spv"));
         let fs_module =
@@ -67,8 +94,8 @@ impl State {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &vs_module,
-                entry_point: "main", // 1.
-                buffers: &[],        // 2.
+                entry_point: "main",
+                buffers: &[Vertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &fs_module,
@@ -104,6 +131,8 @@ impl State {
             size,
             render_pipeline,
             clear_color: (0.1, 0.2, 0.3, 1.0),
+            vertex_buffer,
+            num_vertices: VERTICES.len() as u32,
         }
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
@@ -167,7 +196,13 @@ impl State {
             depth_stencil_attachment: None,
         });
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.draw(0..3, 0..1);
+        // set_vertex_buffer takes two parameters.
+        // The first is what buffer slot to use for this vertex buffer.
+        // You can have multiple vertex buffers set at a time
+        // The second parameter is the slice of the buffer to use.
+        // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.draw(0..self.num_vertices, 0..1);
         drop(render_pass); // why? see learn-wgpu
         self.queue.submit(std::iter::once(encoder.finish()));
         Ok(())
