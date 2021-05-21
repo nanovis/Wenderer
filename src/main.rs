@@ -148,6 +148,7 @@ struct State {
     num_indices: u32,
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: Texture,
+    depth_texture: Texture,
     camera: Camera,
     camera_controller: CameraController,
     uniforms: Uniforms,
@@ -195,6 +196,9 @@ impl State {
         let diffuse_bytes = include_bytes!("../data/happy-tree.png");
         let diffuse_texture =
             Texture::from_bytes(&device, &queue, diffuse_bytes, "happy_tree.png").unwrap();
+        // create depth texture
+        let depth_texture = Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
+        // TODO: added rendering for depth buffer
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
@@ -330,7 +334,13 @@ impl State {
                 clamp_depth: false,
                 conservative: false,
             },
-            depth_stencil: None, // not using depth buffer for now
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less, // tells us when to discard a new pixel
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,                         // not using multisampling
                 mask: !0,                         // use all samples
@@ -351,6 +361,7 @@ impl State {
             num_indices: INDICES.len() as u32,
             diffuse_bind_group,
             diffuse_texture,
+            depth_texture,
             camera,
             camera_controller: CameraController::new(0.2),
             uniforms,
@@ -364,6 +375,8 @@ impl State {
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
+        self.depth_texture =
+            Texture::create_depth_texture(&self.device, &self.sc_desc, "depth texture");
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
     }
     // input() returns a bool to indicate whether an event has been fully processed.
@@ -425,7 +438,14 @@ impl State {
                     store: true,
                 },
             }],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: true,
+                }),
+                stencil_ops: None,
+            }),
         });
         render_pass.set_pipeline(&self.render_pipeline);
         // set_vertex_buffer takes two parameters.
