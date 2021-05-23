@@ -3,6 +3,13 @@ use bytemuck::{Pod, Zeroable};
 use cgmath::SquareMatrix;
 
 #[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct Vert<const POS_LENGTH: usize, const ATTRIB_LENGTH: usize> {
+    pub position: [f32; POS_LENGTH],
+    pub attrib: [f32; ATTRIB_LENGTH],
+}
+
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
