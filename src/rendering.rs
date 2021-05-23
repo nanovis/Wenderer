@@ -69,7 +69,7 @@ pub struct DepthPass {
 }
 
 impl DepthPass {
-    const CANVAS: Rectangle = Rectangle {};
+    const CANVAS: Rectangle = Rectangle;
 
     pub fn new(device: &wgpu::Device, sc_desc: &wgpu::SwapChainDescriptor) -> Self {
         let texture = Texture::create_depth_texture(device, sc_desc, "depth_texture");
@@ -236,7 +236,7 @@ pub struct ColorPass {
 }
 
 impl ColorPass {
-    const GEOMETRY: Pentagon = Pentagon {};
+    const GEOMETRY: Pentagon = Pentagon;
 
     pub fn new(
         device: &wgpu::Device,

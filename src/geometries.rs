@@ -20,7 +20,7 @@ const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = wgpu::VertexBufferLayout {
     ],
 };
 
-pub struct Pentagon {}
+pub struct Pentagon;
 
 impl Pentagon {
     const VERTICES: &'static [Vertex] = &[
@@ -67,7 +67,7 @@ impl Geometry for Pentagon {
     }
 }
 
-pub struct Rectangle {}
+pub struct Rectangle;
 
 impl Rectangle {
     const VERTICES: &'static [Vertex] = &[
