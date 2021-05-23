@@ -1,13 +1,8 @@
-use crate::rendering::{Camera, Uniform};
+use crate::rendering::Camera;
 use bytemuck::{Pod, Zeroable};
 use cgmath::SquareMatrix;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct Vert<const POS_LENGTH: usize, const ATTRIB_LENGTH: usize> {
-    pub position: [f32; POS_LENGTH],
-    pub attrib: [f32; ATTRIB_LENGTH],
-}
+use crevice::std140::AsStd140;
+use mint::ColumnMatrix4;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -17,9 +12,9 @@ pub struct Vertex {
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Pod, Zeroable)]
+#[derive(Debug, Copy, Clone, AsStd140)]
 pub struct Uniforms {
-    view_proj: [[f32; 4]; 4],
+    view_proj: ColumnMatrix4<f32>,
 }
 
 impl Uniforms {
@@ -30,11 +25,5 @@ impl Uniforms {
     }
     pub fn update_view_proj(&mut self, camera: &Camera) {
         self.view_proj = camera.build_view_projection_matrix().into();
-    }
-}
-
-impl Uniform for Uniforms {
-    fn to_raw_u8(&self) -> &[u8] {
-        return bytemuck::cast_slice(&self.view_proj);
     }
 }

@@ -5,6 +5,7 @@ use wgpu::{CommandEncoder, Device, Queue, SwapChainDescriptor, TextureView};
 use crate::data::Uniforms;
 use crate::geometries::{Pentagon, Rectangle};
 use crate::shading::Texture;
+use crevice::std140::{AsStd140, Std140};
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
 // That means that in normalized device coordinates the x axis and y axis are in the range of -1.0 to +1.0, and the z axis is 0.0 to +1.0.
@@ -34,10 +35,6 @@ pub trait RenderPass {
         depth_view: Option<&TextureView>,
         encoder: &mut wgpu::CommandEncoder,
     );
-}
-
-pub trait Uniform {
-    fn to_raw_u8(&self) -> &[u8];
 }
 
 pub struct Camera {
@@ -299,7 +296,7 @@ impl ColorPass {
         uniforms.update_view_proj(camera);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
-            contents: uniforms.to_raw_u8(),
+            contents: uniforms.as_std140().as_bytes(),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
         let uniform_bind_group_layout =
@@ -410,7 +407,11 @@ impl ColorPass {
 
     pub fn update_view_proj_uniform(&mut self, camera: &Camera, queue: &wgpu::Queue) {
         self.uniforms.update_view_proj(camera);
-        queue.write_buffer(&self.uniform_buffer, 0, self.uniforms.to_raw_u8());
+        queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            self.uniforms.as_std140().as_bytes(),
+        );
     }
 }
 
