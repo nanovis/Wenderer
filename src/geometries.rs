@@ -109,3 +109,73 @@ impl Geometry for Rectangle {
         Self::INDICES.len()
     }
 }
+
+pub struct Cube;
+
+impl Cube {
+    const SIDE: f32 = 0.5;
+    const VERTICES: &'static [Vertex] = &[
+        // 4 vertices on z = 0.5
+        Vertex {
+            position: [-Self::SIDE, -Self::SIDE, Self::SIDE],
+            tex_coords: [0.0, 0.0],
+        },
+        Vertex {
+            position: [Self::SIDE, -Self::SIDE, Self::SIDE],
+            tex_coords: [0.0, 1.0],
+        },
+        Vertex {
+            position: [Self::SIDE, Self::SIDE, Self::SIDE],
+            tex_coords: [1.0, 0.0],
+        },
+        Vertex {
+            position: [-Self::SIDE, Self::SIDE, Self::SIDE],
+            tex_coords: [1.0, 1.0],
+        },
+        // 4 vertices on z = -0.5
+        Vertex {
+            position: [-Self::SIDE, -Self::SIDE, -Self::SIDE],
+            tex_coords: [0.0, 0.0],
+        },
+        Vertex {
+            position: [Self::SIDE, -Self::SIDE, -Self::SIDE],
+            tex_coords: [0.0, 1.0],
+        },
+        Vertex {
+            position: [Self::SIDE, Self::SIDE, -Self::SIDE],
+            tex_coords: [1.0, 0.0],
+        },
+        Vertex {
+            position: [-Self::SIDE, Self::SIDE, -Self::SIDE],
+            tex_coords: [1.0, 1.0],
+        },
+    ];
+
+    #[rustfmt::skip]
+    const INDICES: &'static [u16] = &[
+        0, 1, 3, 3, 1, 2,
+        2, 1, 5, 2, 5, 6,
+        3, 2, 7, 7, 2, 6,
+        4, 0, 3, 4, 3, 7,
+        4, 1, 0, 4, 5, 1,
+        7, 6, 5, 7, 5, 4
+    ];
+}
+
+impl Geometry for Cube {
+    fn vertex_desc(&self) -> VertexBufferLayout {
+        DEFAULT_VERTEX_LAYOUT
+    }
+
+    fn get_vertex_raw(&self) -> &[u8] {
+        bytemuck::cast_slice(Self::VERTICES)
+    }
+
+    fn get_index_raw(&self) -> &[u8] {
+        bytemuck::cast_slice(Self::INDICES)
+    }
+
+    fn get_num_indices(&self) -> usize {
+        Self::INDICES.len()
+    }
+}
