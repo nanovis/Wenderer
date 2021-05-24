@@ -31,19 +31,16 @@ type Mat4 = Matrix4<f32>;
 
 pub struct Mesh2 {
     vertices: Vec<Vertex2>,
-    indices: Vec<u32>,
+    indices_u16: Vec<u16>,
+    indices_u32: Vec<u32>,
+    index_format: IndexFormat,
+    index_length: usize,
 }
 
 impl Mesh2 {
-    pub fn new_from_vertex2(vertices: &Vec<Vertex2>, indices: &Vec<u32>) -> Self {
-        Self {
-            vertices: vertices.clone(),
-            indices: indices.clone(),
-        }
-    }
     pub fn new(
         vertices: &Vec<V3>,
-        indices: &Vec<u32>,
+        indices: &Vec<usize>,
         attribs_2D: &Vec<V2>,
         transform_matrix: Option<Mat4>,
     ) -> Self {
@@ -65,7 +62,26 @@ impl Mesh2 {
                 attrib: [a.x, a.y],
             })
             .collect();
-        return Self::new_from_vertex2(&vertices, indices);
+        let index_length = indices.len();
+        if vertices.len() <= u16::MAX as usize {
+            let indices = indices.iter().map(|x| *x as u16).collect();
+            return Self {
+                vertices: vertices.clone(),
+                indices_u32: vec![],
+                indices_u16: indices,
+                index_format: IndexFormat::Uint16,
+                index_length,
+            };
+        } else {
+            let indices = indices.iter().map(|x| *x as u32).collect();
+            return Self {
+                vertices: vertices.clone(),
+                indices_u32: indices,
+                indices_u16: vec![],
+                index_format: IndexFormat::Uint32,
+                index_length,
+            };
+        }
     }
 }
 
@@ -79,33 +95,35 @@ impl Geometry for Mesh2 {
     }
 
     fn get_index_raw(&self) -> &[u8] {
-        bytemuck::cast_slice(self.indices.as_slice())
+        match self.index_format {
+            IndexFormat::Uint16 => bytemuck::cast_slice(self.indices_u16.as_slice()),
+            IndexFormat::Uint32 => bytemuck::cast_slice(self.indices_u32.as_slice()),
+        }
     }
 
+    #[inline]
     fn get_index_format(&self) -> IndexFormat {
-        IndexFormat::Uint32
+        self.index_format
     }
 
+    #[inline]
     fn get_num_indices(&self) -> usize {
-        self.indices.len()
+        self.index_length
     }
 }
 
 pub struct Mesh3 {
     vertices: Vec<Vertex3>,
-    indices: Vec<u32>,
+    indices_u32: Vec<u32>,
+    indices_u16: Vec<u16>,
+    index_format: IndexFormat,
+    index_length: usize,
 }
 
 impl Mesh3 {
-    pub fn new_from_vertex3(vertices: &Vec<Vertex3>, indices: &Vec<u32>) -> Self {
-        Self {
-            vertices: vertices.clone(),
-            indices: indices.clone(),
-        }
-    }
     pub fn new(
         vertices: &Vec<V3>,
-        indices: &Vec<u32>,
+        indices: &Vec<usize>,
         attribs_3D: &Vec<V3>,
         transform_matrix: Option<Mat4>,
     ) -> Self {
@@ -127,7 +145,26 @@ impl Mesh3 {
                 attrib: [a.x, a.y, a.z],
             })
             .collect();
-        return Self::new_from_vertex3(&vertices, indices);
+        let index_length = indices.len();
+        if vertices.len() <= u16::MAX as usize {
+            let indices = indices.iter().map(|x| *x as u16).collect();
+            return Self {
+                vertices: vertices.clone(),
+                indices_u32: vec![],
+                indices_u16: indices,
+                index_format: IndexFormat::Uint16,
+                index_length,
+            };
+        } else {
+            let indices = indices.iter().map(|x| *x as u32).collect();
+            return Self {
+                vertices: vertices.clone(),
+                indices_u32: indices,
+                indices_u16: vec![],
+                index_format: IndexFormat::Uint32,
+                index_length,
+            };
+        }
     }
 }
 
@@ -156,15 +193,20 @@ impl Geometry for Mesh3 {
     }
 
     fn get_index_raw(&self) -> &[u8] {
-        bytemuck::cast_slice(self.indices.as_slice())
+        match self.index_format {
+            IndexFormat::Uint16 => bytemuck::cast_slice(self.indices_u16.as_slice()),
+            IndexFormat::Uint32 => bytemuck::cast_slice(self.indices_u32.as_slice()),
+        }
     }
 
+    #[inline]
     fn get_index_format(&self) -> IndexFormat {
-        IndexFormat::Uint32
+        self.index_format
     }
 
+    #[inline]
     fn get_num_indices(&self) -> usize {
-        self.indices.len()
+        self.index_length
     }
 }
 
@@ -224,7 +266,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-    const INDICES: &'static [u32] = &[0, 1, 2, 0, 2, 3];
+    const INDICES: &'static [usize] = &[0, 1, 2, 0, 2, 3];
 
     pub fn new_standard_rectangle() -> Self {
         let pos = vec![
