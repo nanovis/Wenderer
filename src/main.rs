@@ -2,6 +2,7 @@ use futures::executor::block_on;
 use wenderer::rendering::{Camera, ColorPass, DepthPass, RenderPass, VanillaPass};
 use wenderer::shading::Texture;
 use wenderer::utils::CameraController;
+use wgpu::TextureFormat;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -70,7 +71,13 @@ impl State {
             zfar: 100.0,
         };
         let depth_pass = DepthPass::new(&device, &sc_desc);
-        let color_pass = ColorPass::new(&device, &queue, &sc_desc, &camera);
+        let color_pass = ColorPass::new(
+            &device,
+            &queue,
+            &sc_desc,
+            &TextureFormat::Rgba32Float,
+            &camera,
+        );
         let render_buffer = Texture::create_render_buffer(
             (sc_desc.width, sc_desc.height),
             &device,

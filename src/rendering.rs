@@ -239,6 +239,7 @@ impl ColorPass {
         device: &wgpu::Device,
         queue: &Queue,
         sc_desc: &wgpu::SwapChainDescriptor,
+        target_format: &TextureFormat,
         camera: &Camera,
     ) -> Self {
         // create texture
@@ -358,7 +359,7 @@ impl ColorPass {
                 module: &fs_module,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: TextureFormat::Rgba32Float,     // highlight
+                    format: target_format.clone(),
                     blend: Some(wgpu::BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: wgpu::ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],
