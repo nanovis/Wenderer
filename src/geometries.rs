@@ -214,10 +214,10 @@ impl Rectangle {
 
     pub fn new() -> Self {
         let pos = vec![
-            V3::new(0.0, 0.0, 0.5),
-            V3::new(1.0, 0.0, 0.5),
-            V3::new(1.0, 1.0, 0.5),
-            V3::new(0.0, 1.0, 0.5),
+            V3::new(0.0, 0.0, 0.0),
+            V3::new(1.0, 0.0, 0.0),
+            V3::new(1.0, 1.0, 0.0),
+            V3::new(0.0, 1.0, 0.0),
         ];
         let attribs = vec![
             V2::new(0.0, 1.0),
