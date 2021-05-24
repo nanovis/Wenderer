@@ -71,19 +71,13 @@ impl State {
             zfar: 100.0,
         };
         let depth_pass = DepthPass::new(&device, &sc_desc);
-        let color_pass = ColorPass::new(
-            &device,
-            &queue,
-            &sc_desc,
-            &TextureFormat::Rgba8UnormSrgb,
-            &camera,
-        );
         let render_buffer = Texture::create_render_buffer(
             (sc_desc.width, sc_desc.height),
             &device,
             Some("Render buffer texture"),
         );
-        let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc);
+        let color_pass = ColorPass::new(&device, &queue, &sc_desc, &render_buffer.format, &camera);
+        let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc, &sc_desc.format);
         Self {
             surface,
             device,

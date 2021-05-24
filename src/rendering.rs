@@ -486,6 +486,7 @@ impl VanillaPass {
         image_texture: &Texture,
         device: &wgpu::Device,
         sc_desc: &wgpu::SwapChainDescriptor,
+        target_format: &TextureFormat,
     ) -> Self {
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
@@ -567,7 +568,7 @@ impl VanillaPass {
                 module: &fs_module,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: sc_desc.format,
+                    format: target_format.clone(),
                     blend: Some(wgpu::BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: wgpu::ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],

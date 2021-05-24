@@ -7,6 +7,7 @@ pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
+    pub format: TextureFormat,
 }
 
 impl Texture {
@@ -32,13 +33,14 @@ impl Texture {
             height: sc_desc.height,
             depth_or_array_layers: 1,
         };
+        let format = Self::DEPTH_FORMAT;
         let desc = wgpu::TextureDescriptor {
             label: Some(label),
             size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: Self::DEPTH_FORMAT,
+            format: format.clone(),
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT | wgpu::TextureUsage::SAMPLED,
         };
         let texture = device.create_texture(&desc);
@@ -61,6 +63,7 @@ impl Texture {
             texture,
             view,
             sampler,
+            format,
         }
     }
 
@@ -74,13 +77,14 @@ impl Texture {
             height: dimensions.1,
             depth_or_array_layers: 1,
         };
+        let format = TextureFormat::Rgba8UnormSrgb;
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
             size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: format.clone(),
             usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::RENDER_ATTACHMENT,
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -96,6 +100,7 @@ impl Texture {
         Self {
             texture,
             view,
+            format,
             sampler,
         }
     }
@@ -114,13 +119,14 @@ impl Texture {
             height: dimensions.1,
             depth_or_array_layers: 1, //HIGHLIGHT: why?
         };
+        let format = TextureFormat::Rgba8UnormSrgb;
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
             size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: format.clone(),
             usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
         });
 
@@ -153,6 +159,7 @@ impl Texture {
         Ok(Self {
             texture,
             view,
+            format,
             sampler,
         })
     }
