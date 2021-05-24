@@ -6,9 +6,16 @@ use mint::ColumnMatrix4;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
-pub struct Vertex {
+pub struct Vertex2 {
     pub position: [f32; 3],
-    pub tex_coords: [f32; 2],
+    pub attrib: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+pub struct Vertex3 {
+    pub position: [f32; 3],
+    pub attrib: [f32; 3],
 }
 
 #[repr(C)]

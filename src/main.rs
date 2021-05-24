@@ -18,7 +18,6 @@ struct State {
     camera: Camera,
     camera_controller: CameraController,
     render_buffer: Tex,
-    depth_pass: DepthPass,
     color_pass: ColorPass,
     vanilla_pass: VanillaPass,
 }
@@ -69,7 +68,6 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
-        let depth_pass = DepthPass::new(&device, &sc_desc);
         let render_buffer = Tex::create_render_buffer(
             (sc_desc.width, sc_desc.height),
             &device,
@@ -86,7 +84,6 @@ impl State {
             size,
             camera,
             camera_controller: CameraController::new(0.2),
-            depth_pass,
             color_pass,
             render_buffer,
             vanilla_pass,
@@ -100,7 +97,6 @@ impl State {
         self.sc_desc.height = new_size.height;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
         self.color_pass.resize(&self.device, &self.sc_desc);
-        self.depth_pass.resize(&self.device, &self.sc_desc);
         self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
         // TODO: resize render buffer and vanilla pass
     }

@@ -51,167 +51,7 @@ impl Camera {
     pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
         let view = Matrix4::look_at_rh(self.eye, self.center, self.up);
         let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
-    }
-}
-
-pub struct DepthPass {
-    pub depth_texture: Tex,
-    layout: BindGroupLayout,
-    bind_group: BindGroup,
-    vertex_buffer: Buffer,
-    index_buffer: Buffer,
-    num_depth_indices: u32,
-    render_pipeline: RenderPipeline,
-}
-
-impl DepthPass {
-    const CANVAS: Rectangle = Rectangle;
-
-    pub fn new(device: &Device, sc_desc: &SwapChainDescriptor) -> Self {
-        let texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
-        let layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Depth Pass Layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    count: None,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Depth,
-                        multisampled: false,
-                        view_dimension: TextureViewDimension::D2,
-                    },
-                    visibility: ShaderStage::FRAGMENT,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    count: None,
-                    ty: BindingType::Sampler {
-                        comparison: true,
-                        filtering: true,
-                    },
-                    visibility: ShaderStage::FRAGMENT,
-                },
-            ],
-        });
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &layout,
-            label: Some("depth_pass.bind_group"),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&texture.view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&texture.sampler),
-                },
-            ],
-        });
-        let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Depth Pass VB"),
-            contents: Self::CANVAS.get_vertex_raw(),
-            usage: BufferUsage::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Depth Pass IB"),
-            contents: Self::CANVAS.get_index_raw(),
-            usage: BufferUsage::INDEX,
-        });
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Depth Pass Pipeline Layout"),
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
-        });
-        let vs_module = device.create_shader_module(&include_spirv!("shaders/challenge.vert.spv"));
-        let fs_module = device.create_shader_module(&include_spirv!("shaders/challenge.frag.spv"));
-        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Depth Pass Render Pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: VertexState {
-                module: &vs_module,
-                entry_point: "main",
-                buffers: &[Self::CANVAS.vertex_desc()],
-            },
-            fragment: Some(FragmentState {
-                module: &fs_module,
-                entry_point: "main",
-                targets: &[ColorTargetState {
-                    format: sc_desc.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrite::ALL,
-                }],
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                clamp_depth: false,
-                polygon_mode: PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-        });
-        Self {
-            depth_texture: texture,
-            layout,
-            bind_group,
-            vertex_buffer,
-            index_buffer,
-            num_depth_indices: Self::CANVAS.get_num_indices() as u32,
-            render_pipeline,
-        }
-    }
-}
-
-impl RenderPass for DepthPass {
-    fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {
-        self.depth_texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
-        self.bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &self.layout,
-            label: Some("depth_pass.bind_group"),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&self.depth_texture.view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&self.depth_texture.sampler),
-                },
-            ],
-        });
-    }
-
-    fn render(
-        &self,
-        render_into_view: &TextureView,
-        _depth_view: Option<&TextureView>,
-        encoder: &mut CommandEncoder,
-    ) {
-        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Depth Visual Render Pass"),
-            color_attachments: &[RenderPassColorAttachment {
-                view: render_into_view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: None,
-        });
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
+        return proj * view;
     }
 }
 
@@ -465,6 +305,7 @@ impl RenderPass for ColorPass {
     }
 }
 
+// TODO: need debug
 pub struct VanillaPass {
     texture_bind_group_layout: BindGroupLayout,
     texture_bind_group: BindGroup,
@@ -472,12 +313,12 @@ pub struct VanillaPass {
     index_buffer: Buffer,
     num_depth_indices: u32,
     render_pipeline: RenderPipeline,
+    geometry: Rectangle,
 }
 
 impl VanillaPass {
-    const GEOMETRY: Rectangle = Rectangle;
-
     pub fn new(image_texture: &Tex, device: &Device, target_format: &TextureFormat) -> Self {
+        let geometry = Rectangle::new();
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
@@ -525,13 +366,13 @@ impl VanillaPass {
         // create vertex buffer
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: Self::GEOMETRY.get_vertex_raw(),
+            contents: geometry.get_vertex_raw(),
             usage: BufferUsage::VERTEX,
         });
         // create index buffer
         let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: Self::GEOMETRY.get_index_raw(),
+            contents: geometry.get_index_raw(),
             usage: BufferUsage::INDEX,
         });
 
@@ -549,7 +390,7 @@ impl VanillaPass {
             vertex: VertexState {
                 module: &vs_module,
                 entry_point: "main",
-                buffers: &[Self::GEOMETRY.vertex_desc()],
+                buffers: &[geometry.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &fs_module,
@@ -577,7 +418,8 @@ impl VanillaPass {
             texture_bind_group,
             vertex_buffer,
             index_buffer,
-            num_depth_indices: Self::GEOMETRY.get_num_indices() as u32,
+            num_depth_indices: geometry.get_num_indices() as u32,
+            geometry,
             render_pipeline,
         }
     }
@@ -623,6 +465,167 @@ impl RenderPass for VanillaPass {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+        render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
+    }
+}
+
+pub struct DepthPass {
+    pub depth_texture: Tex,
+    layout: BindGroupLayout,
+    bind_group: BindGroup,
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
+    num_depth_indices: u32,
+    render_pipeline: RenderPipeline,
+    canvas: Rectangle,
+}
+
+impl DepthPass {
+    pub fn new(device: &Device, sc_desc: &SwapChainDescriptor) -> Self {
+        let canvas = Rectangle::new();
+        let texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
+        let layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Depth Pass Layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Depth,
+                        multisampled: false,
+                        view_dimension: TextureViewDimension::D2,
+                    },
+                    visibility: ShaderStage::FRAGMENT,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    ty: BindingType::Sampler {
+                        comparison: true,
+                        filtering: true,
+                    },
+                    visibility: ShaderStage::FRAGMENT,
+                },
+            ],
+        });
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &layout,
+            label: Some("depth_pass.bind_group"),
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+        });
+        let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("Depth Pass VB"),
+            contents: canvas.get_vertex_raw(),
+            usage: BufferUsage::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("Depth Pass IB"),
+            contents: canvas.get_index_raw(),
+            usage: BufferUsage::INDEX,
+        });
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Depth Pass Pipeline Layout"),
+            bind_group_layouts: &[&layout],
+            push_constant_ranges: &[],
+        });
+        let vs_module = device.create_shader_module(&include_spirv!("shaders/challenge.vert.spv"));
+        let fs_module = device.create_shader_module(&include_spirv!("shaders/challenge.frag.spv"));
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: Some("Depth Pass Render Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: VertexState {
+                module: &vs_module,
+                entry_point: "main",
+                buffers: &[canvas.vertex_desc()],
+            },
+            fragment: Some(FragmentState {
+                module: &fs_module,
+                entry_point: "main",
+                targets: &[ColorTargetState {
+                    format: sc_desc.format,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrite::ALL,
+                }],
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
+                clamp_depth: false,
+                polygon_mode: PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+        });
+        Self {
+            depth_texture: texture,
+            layout,
+            bind_group,
+            vertex_buffer,
+            index_buffer,
+            num_depth_indices: canvas.get_num_indices() as u32,
+            canvas,
+            render_pipeline,
+        }
+    }
+}
+
+impl RenderPass for DepthPass {
+    fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {
+        self.depth_texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
+        self.bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &self.layout,
+            label: Some("depth_pass.bind_group"),
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&self.depth_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&self.depth_texture.sampler),
+                },
+            ],
+        });
+    }
+
+    fn render(
+        &self,
+        render_into_view: &TextureView,
+        _depth_view: Option<&TextureView>,
+        encoder: &mut CommandEncoder,
+    ) {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("Depth Visual Render Pass"),
+            color_attachments: &[RenderPassColorAttachment {
+                view: render_into_view,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Load,
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: None,
+        });
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
 }
