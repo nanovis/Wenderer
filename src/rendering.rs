@@ -1,10 +1,10 @@
 use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
 use wgpu::util::DeviceExt;
-use wgpu::{CommandEncoder, Device, Queue, SwapChainDescriptor, TextureFormat, TextureView};
+use wgpu::*;
 
 use crate::data::Uniforms;
 use crate::geometries::{Pentagon, Rectangle};
-use crate::shading::Texture;
+use crate::shading::Tex;
 use crevice::std140::{AsStd140, Std140};
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
@@ -21,19 +21,19 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 );
 
 pub trait Geometry {
-    fn vertex_desc(&self) -> wgpu::VertexBufferLayout;
+    fn vertex_desc(&self) -> VertexBufferLayout;
     fn get_vertex_raw(&self) -> &[u8];
     fn get_index_raw(&self) -> &[u8];
     fn get_num_indices(&self) -> usize;
 }
 
 pub trait RenderPass {
-    fn resize(&mut self, device: &wgpu::Device, sc_desc: &wgpu::SwapChainDescriptor);
+    fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor);
     fn render(
         &self,
         render_into_view: &TextureView,
         depth_view: Option<&TextureView>,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut CommandEncoder,
     );
 }
 
@@ -56,105 +56,103 @@ impl Camera {
 }
 
 pub struct DepthPass {
-    pub depth_texture: Texture,
-    layout: wgpu::BindGroupLayout,
-    bind_group: wgpu::BindGroup,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
+    pub depth_texture: Tex,
+    layout: BindGroupLayout,
+    bind_group: BindGroup,
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
     num_depth_indices: u32,
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: RenderPipeline,
 }
 
 impl DepthPass {
     const CANVAS: Rectangle = Rectangle;
 
-    pub fn new(device: &wgpu::Device, sc_desc: &wgpu::SwapChainDescriptor) -> Self {
-        let texture = Texture::create_depth_texture(device, sc_desc, "depth_texture");
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+    pub fn new(device: &Device, sc_desc: &SwapChainDescriptor) -> Self {
+        let texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
+        let layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Depth Pass Layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Depth,
                         multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                        view_dimension: TextureViewDimension::D2,
                     },
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: ShaderStage::FRAGMENT,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
-                    ty: wgpu::BindingType::Sampler {
+                    ty: BindingType::Sampler {
                         comparison: true,
                         filtering: true,
                     },
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: ShaderStage::FRAGMENT,
                 },
             ],
         });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &layout,
             label: Some("depth_pass.bind_group"),
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                    resource: BindingResource::TextureView(&texture.view),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                    resource: BindingResource::Sampler(&texture.sampler),
                 },
             ],
         });
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Depth Pass VB"),
             contents: Self::CANVAS.get_vertex_raw(),
-            usage: wgpu::BufferUsage::VERTEX,
+            usage: BufferUsage::VERTEX,
         });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Depth Pass IB"),
             contents: Self::CANVAS.get_index_raw(),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: BufferUsage::INDEX,
         });
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Depth Pass Pipeline Layout"),
             bind_group_layouts: &[&layout],
             push_constant_ranges: &[],
         });
-        let vs_module =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/challenge.vert.spv"));
-        let fs_module =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/challenge.frag.spv"));
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let vs_module = device.create_shader_module(&include_spirv!("shaders/challenge.vert.spv"));
+        let fs_module = device.create_shader_module(&include_spirv!("shaders/challenge.frag.spv"));
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Depth Pass Render Pipeline"),
             layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
+            vertex: VertexState {
                 module: &vs_module,
                 entry_point: "main",
                 buffers: &[Self::CANVAS.vertex_desc()],
             },
-            fragment: Some(wgpu::FragmentState {
+            fragment: Some(FragmentState {
                 module: &fs_module,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[ColorTargetState {
                     format: sc_desc.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrite::ALL,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrite::ALL,
                 }],
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
                 clamp_depth: false,
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode: PolygonMode::Fill,
                 conservative: false,
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState {
+            multisample: MultisampleState {
                 count: 1,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
@@ -174,18 +172,18 @@ impl DepthPass {
 
 impl RenderPass for DepthPass {
     fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {
-        self.depth_texture = Texture::create_depth_texture(device, sc_desc, "depth_texture");
-        self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        self.depth_texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
+        self.bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &self.layout,
             label: Some("depth_pass.bind_group"),
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.depth_texture.view),
+                    resource: BindingResource::TextureView(&self.depth_texture.view),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.depth_texture.sampler),
+                    resource: BindingResource::Sampler(&self.depth_texture.sampler),
                 },
             ],
         });
@@ -197,13 +195,13 @@ impl RenderPass for DepthPass {
         _depth_view: Option<&TextureView>,
         encoder: &mut CommandEncoder,
     ) {
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Depth Visual Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[RenderPassColorAttachment {
                 view: render_into_view,
                 resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
+                ops: Operations {
+                    load: LoadOp::Load,
                     store: true,
                 },
             }],
@@ -212,23 +210,23 @@ impl RenderPass for DepthPass {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
 }
 
 pub struct ColorPass {
-    pub image_texture: Texture,
-    depth_texture: Texture,
-    texture_bind_group_layout: wgpu::BindGroupLayout,
-    texture_bind_group: wgpu::BindGroup,
-    uniform_bind_group: wgpu::BindGroup,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
+    pub image_texture: Tex,
+    depth_texture: Tex,
+    texture_bind_group_layout: BindGroupLayout,
+    texture_bind_group: BindGroup,
+    uniform_bind_group: BindGroup,
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
     uniforms: Uniforms,
-    uniform_buffer: wgpu::Buffer,
+    uniform_buffer: Buffer,
     num_depth_indices: u32,
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: RenderPipeline,
     pub clear_color: (f64, f64, f64, f64),
 }
 
@@ -236,38 +234,38 @@ impl ColorPass {
     const GEOMETRY: Pentagon = Pentagon;
 
     pub fn new(
-        device: &wgpu::Device,
+        device: &Device,
         queue: &Queue,
-        sc_desc: &wgpu::SwapChainDescriptor,
+        sc_desc: &SwapChainDescriptor,
         target_format: &TextureFormat,
         camera: &Camera,
     ) -> Self {
         // create texture
         let diffuse_bytes = include_bytes!("../data/happy-tree.png");
         let image_texture =
-            Texture::from_bytes(&device, queue, diffuse_bytes, "happy_tree.png").unwrap();
+            Tex::from_bytes(&device, queue, diffuse_bytes, "happy_tree.png").unwrap();
         // create depth texture
-        let depth_texture = Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
+        let depth_texture = Tex::create_depth_texture(&device, &sc_desc, "depth_texture");
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("Texture binding group layout"),
                 entries: &[
-                    wgpu::BindGroupLayoutEntry {
+                    BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Texture {
                             multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            sample_type: TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
-                    wgpu::BindGroupLayoutEntry {
+                    BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler {
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Sampler {
                             comparison: false, // mostly for depth texture
                             filtering: true,
                         },
@@ -278,35 +276,35 @@ impl ColorPass {
         // That's because a BindGroup is a more specific declaration of the BindGroupLayout.
         // The reason why they're separate is it allows us to swap out BindGroups on the fly,
         // so long as they all share the same BindGroupLayout
-        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("diffuse_bind_group"),
             layout: &texture_bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&image_texture.view),
+                    resource: BindingResource::TextureView(&image_texture.view),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&image_texture.sampler),
+                    resource: BindingResource::Sampler(&image_texture.sampler),
                 },
             ],
         });
         // create uniforms
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(camera);
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: uniforms.as_std140().as_bytes(),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
         });
         let uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                    visibility: ShaderStage::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -314,81 +312,78 @@ impl ColorPass {
                 }],
                 label: Some("Uniform_bind_group_layout"),
             });
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &uniform_bind_group_layout,
             label: Some("uniform_bind_group"),
-            entries: &[wgpu::BindGroupEntry {
+            entries: &[BindGroupEntry {
                 binding: 0,
                 resource: uniform_buffer.as_entire_binding(),
             }],
         });
 
         // create vertex buffer
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: Self::GEOMETRY.get_vertex_raw(),
-            usage: wgpu::BufferUsage::VERTEX,
+            usage: BufferUsage::VERTEX,
         });
         // create index buffer
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: Self::GEOMETRY.get_index_raw(),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: BufferUsage::INDEX,
         });
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
-                push_constant_ranges: &[],
-            });
-        let vs_module =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/shader.vert.spv"));
-        let fs_module =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/shader.frag.spv"));
+        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        let vs_module = device.create_shader_module(&include_spirv!("shaders/shader.vert.spv"));
+        let fs_module = device.create_shader_module(&include_spirv!("shaders/shader.frag.spv"));
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
+            vertex: VertexState {
                 module: &vs_module,
                 entry_point: "main",
                 buffers: &[Self::GEOMETRY.vertex_desc()],
             },
-            fragment: Some(wgpu::FragmentState {
+            fragment: Some(FragmentState {
                 module: &fs_module,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[ColorTargetState {
                     format: target_format.clone(),
-                    blend: Some(wgpu::BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
-                    write_mask: wgpu::ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
+                    blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
+                    write_mask: ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
+                front_face: FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
+                cull_mode: Some(Face::Back),
+                polygon_mode: PolygonMode::Fill,
                 clamp_depth: false,
                 conservative: false,
             },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: Texture::DEPTH_FORMAT,
+            depth_stencil: Some(DepthStencilState {
+                format: Tex::DEPTH_FORMAT,
                 depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less, // tells us when to discard a new pixel
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState {
+                depth_compare: CompareFunction::Less, // tells us when to discard a new pixel
+                stencil: StencilState::default(),
+                bias: DepthBiasState {
                     constant: 2, // Corresponds to bilinear filtering
                     slope_scale: 2.0,
                     clamp: 0.0,
                 },
             }),
-            multisample: wgpu::MultisampleState {
+            multisample: MultisampleState {
                 count: 1,                         // not using multisampling
                 mask: !0,                         // use all samples
                 alpha_to_coverage_enabled: false, // related to anti-aliasing, not using for now
-            }, // the config of this struct is the same as wgpu::MultisampleState::default()
+            }, // the config of this struct is the same as MultisampleState::default()
         });
         Self {
             image_texture,
@@ -406,7 +401,7 @@ impl ColorPass {
         }
     }
 
-    pub fn update_view_proj_uniform(&mut self, camera: &Camera, queue: &wgpu::Queue) {
+    pub fn update_view_proj_uniform(&mut self, camera: &Camera, queue: &Queue) {
         self.uniforms.update_view_proj(camera);
         queue.write_buffer(
             &self.uniform_buffer,
@@ -418,7 +413,7 @@ impl ColorPass {
 
 impl RenderPass for ColorPass {
     fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {
-        self.depth_texture = Texture::create_depth_texture(device, sc_desc, "depth texture");
+        self.depth_texture = Tex::create_depth_texture(device, sc_desc, "depth texture");
     }
 
     fn render(
@@ -427,18 +422,18 @@ impl RenderPass for ColorPass {
         external_depth_view: Option<&TextureView>,
         encoder: &mut CommandEncoder,
     ) {
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             // color_attachments describe where we are going to draw our color to
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
                 view: render_into_view,
                 // The resolve_target is the texture that will receive the resolved output.
                 // This will be the same as `view` unless multisampling is enabled
                 resolve_target: None,
-                ops: wgpu::Operations {
+                ops: Operations {
                     // The load field tells wgpu how to handle colors stored from the previous frame
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                    load: LoadOp::Clear(Color {
                         r: self.clear_color.0,
                         g: self.clear_color.1,
                         b: self.clear_color.2,
@@ -447,10 +442,10 @@ impl RenderPass for ColorPass {
                     store: true,
                 },
             }],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+            depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                 view: external_depth_view.unwrap_or(&self.depth_texture.view),
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                depth_ops: Some(Operations {
+                    load: LoadOp::Clear(1.0),
                     store: true,
                 }),
                 stencil_ops: None,
@@ -463,7 +458,7 @@ impl RenderPass for ColorPass {
         // The second parameter is the slice of the buffer to use.
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
@@ -471,43 +466,38 @@ impl RenderPass for ColorPass {
 }
 
 pub struct VanillaPass {
-    texture_bind_group_layout: wgpu::BindGroupLayout,
-    texture_bind_group: wgpu::BindGroup,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
+    texture_bind_group_layout: BindGroupLayout,
+    texture_bind_group: BindGroup,
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
     num_depth_indices: u32,
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: RenderPipeline,
 }
 
 impl VanillaPass {
     const GEOMETRY: Rectangle = Rectangle;
 
-    pub fn new(
-        image_texture: &Texture,
-        device: &wgpu::Device,
-        sc_desc: &wgpu::SwapChainDescriptor,
-        target_format: &TextureFormat,
-    ) -> Self {
+    pub fn new(image_texture: &Tex, device: &Device, target_format: &TextureFormat) -> Self {
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("Texture binding group layout"),
                 entries: &[
-                    wgpu::BindGroupLayoutEntry {
+                    BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Texture {
                             multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            sample_type: TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
-                    wgpu::BindGroupLayoutEntry {
+                    BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler {
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Sampler {
                             comparison: false, // mostly for depth texture
                             filtering: true,
                         },
@@ -518,72 +508,69 @@ impl VanillaPass {
         // That's because a BindGroup is a more specific declaration of the BindGroupLayout.
         // The reason why they're separate is it allows us to swap out BindGroups on the fly,
         // so long as they all share the same BindGroupLayout
-        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("diffuse_bind_group"),
             layout: &texture_bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&image_texture.view),
+                    resource: BindingResource::TextureView(&image_texture.view),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&image_texture.sampler),
+                    resource: BindingResource::Sampler(&image_texture.sampler),
                 },
             ],
         });
         // create vertex buffer
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: Self::GEOMETRY.get_vertex_raw(),
-            usage: wgpu::BufferUsage::VERTEX,
+            usage: BufferUsage::VERTEX,
         });
         // create index buffer
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: Self::GEOMETRY.get_index_raw(),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: BufferUsage::INDEX,
         });
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout],
-                push_constant_ranges: &[],
-            });
-        let vs_module =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/vanilla.vert.spv"));
-        let fs_module =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/vanilla.frag.spv"));
+        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[&texture_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        let vs_module = device.create_shader_module(&include_spirv!("shaders/vanilla.vert.spv"));
+        let fs_module = device.create_shader_module(&include_spirv!("shaders/vanilla.frag.spv"));
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
+            vertex: VertexState {
                 module: &vs_module,
                 entry_point: "main",
                 buffers: &[Self::GEOMETRY.vertex_desc()],
             },
-            fragment: Some(wgpu::FragmentState {
+            fragment: Some(FragmentState {
                 module: &fs_module,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[ColorTargetState {
                     format: target_format.clone(),
-                    blend: Some(wgpu::BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
-                    write_mask: wgpu::ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
+                    blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
+                    write_mask: ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
+                front_face: FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
+                cull_mode: Some(Face::Back),
+                polygon_mode: PolygonMode::Fill,
                 clamp_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
+            multisample: MultisampleState::default(),
         });
         Self {
             texture_bind_group_layout,
@@ -605,18 +592,18 @@ impl RenderPass for VanillaPass {
         _depth_view: Option<&TextureView>,
         encoder: &mut CommandEncoder,
     ) {
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             // color_attachments describe where we are going to draw our color to
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
                 view: render_into_view,
                 // The resolve_target is the texture that will receive the resolved output.
                 // This will be the same as `view` unless multisampling is enabled
                 resolve_target: None,
-                ops: wgpu::Operations {
+                ops: Operations {
                     // The load field tells wgpu how to handle colors stored from the previous frame
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                    load: LoadOp::Clear(Color {
                         r: 0.0,
                         g: 0.0,
                         b: 0.0,
@@ -634,7 +621,7 @@ impl RenderPass for VanillaPass {
         // The second parameter is the slice of the buffer to use.
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }

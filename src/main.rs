@@ -1,8 +1,7 @@
 use futures::executor::block_on;
 use wenderer::rendering::{Camera, ColorPass, DepthPass, RenderPass, VanillaPass};
-use wenderer::shading::Texture;
+use wenderer::shading::Tex;
 use wenderer::utils::CameraController;
-use wgpu::TextureFormat;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -18,7 +17,7 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
-    render_buffer: Texture,
+    render_buffer: Tex,
     depth_pass: DepthPass,
     color_pass: ColorPass,
     vanilla_pass: VanillaPass,
@@ -71,13 +70,13 @@ impl State {
             zfar: 100.0,
         };
         let depth_pass = DepthPass::new(&device, &sc_desc);
-        let render_buffer = Texture::create_render_buffer(
+        let render_buffer = Tex::create_render_buffer(
             (sc_desc.width, sc_desc.height),
             &device,
             Some("Render buffer texture"),
         );
         let color_pass = ColorPass::new(&device, &queue, &sc_desc, &render_buffer.format, &camera);
-        let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc, &sc_desc.format);
+        let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc.format);
         Self {
             surface,
             device,

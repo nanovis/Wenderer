@@ -1,21 +1,21 @@
 use crate::data::Vertex;
 use crate::rendering::Geometry;
 use std::mem::size_of;
-use wgpu::VertexBufferLayout;
+use wgpu::{BufferAddress, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat};
 
-const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = wgpu::VertexBufferLayout {
-    array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
-    step_mode: wgpu::InputStepMode::Vertex,
+const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = VertexBufferLayout {
+    array_stride: size_of::<Vertex>() as BufferAddress,
+    step_mode: InputStepMode::Vertex,
     attributes: &[
-        wgpu::VertexAttribute {
+        VertexAttribute {
             offset: 0,
             shader_location: 0, // corresponds to layout(location = 0) in shader
-            format: wgpu::VertexFormat::Float32x3,
+            format: VertexFormat::Float32x3,
         },
-        wgpu::VertexAttribute {
-            offset: size_of::<[f32; 3]>() as wgpu::BufferAddress,
+        VertexAttribute {
+            offset: size_of::<[f32; 3]>() as BufferAddress,
             shader_location: 1,
-            format: wgpu::VertexFormat::Float32x2,
+            format: VertexFormat::Float32x2,
         },
     ],
 };
