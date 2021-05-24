@@ -72,19 +72,19 @@ pub struct Rectangle;
 impl Rectangle {
     const VERTICES: &'static [Vertex] = &[
         Vertex {
-            position: [0.0, 0.0, 0.0],
+            position: [0.0, 0.0, 0.5], // highlight: notice z >0 here
             tex_coords: [0.0, 1.0],
         },
         Vertex {
-            position: [1.0, 0.0, 0.0],
+            position: [1.0, 0.0, 0.5], // highlight: notice z >0 here
             tex_coords: [1.0, 1.0],
         },
         Vertex {
-            position: [1.0, 1.0, 0.0],
+            position: [1.0, 1.0, 0.5], // highlight: notice z >0 here
             tex_coords: [1.0, 0.0],
         },
         Vertex {
-            position: [0.0, 1.0, 0.0],
+            position: [0.0, 1.0, 0.5], // highlight: notice z >0 here
             tex_coords: [0.0, 0.0],
         },
     ];

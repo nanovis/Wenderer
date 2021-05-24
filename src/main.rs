@@ -1,5 +1,6 @@
 use futures::executor::block_on;
-use wenderer::rendering::{Camera, ColorPass, DepthPass, RenderPass};
+use wenderer::rendering::{Camera, ColorPass, DepthPass, RenderPass, VanillaPass};
+use wenderer::shading::Texture;
 use wenderer::utils::CameraController;
 use winit::{
     event::*,
@@ -16,8 +17,10 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
+    render_buffer: Texture,
     depth_pass: DepthPass,
     color_pass: ColorPass,
+    vanilla_pass: VanillaPass,
 }
 
 impl State {
@@ -68,6 +71,12 @@ impl State {
         };
         let depth_pass = DepthPass::new(&device, &sc_desc);
         let color_pass = ColorPass::new(&device, &queue, &sc_desc, &camera);
+        let render_buffer = Texture::create_render_buffer(
+            (sc_desc.width, sc_desc.height),
+            &device,
+            Some("Render buffer texture"),
+        );
+        let vanilla_pass = VanillaPass::new(&color_pass.image_texture, &device, &sc_desc);
         Self {
             surface,
             device,
@@ -79,6 +88,8 @@ impl State {
             camera_controller: CameraController::new(0.2),
             depth_pass,
             color_pass,
+            render_buffer,
+            vanilla_pass,
         }
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
@@ -91,6 +102,7 @@ impl State {
         self.color_pass.resize(&self.device, &self.sc_desc);
         self.depth_pass.resize(&self.device, &self.sc_desc);
         self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
+        // TODO: resize render buffer and vanilla pass
     }
     // input() returns a bool to indicate whether an event has been fully processed.
     // If the method returns true, the main loop won't process the event any further.
@@ -127,12 +139,10 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
-        self.color_pass.render(
-            &frame.view,
-            Some(&self.depth_pass.depth_texture.view),
-            &mut encoder,
-        );
-        self.depth_pass.render(&frame.view, None, &mut encoder);
+        self.color_pass
+            .render(&self.render_buffer.view, None, &mut encoder);
+        // self.depth_pass.render(&frame.view, None, &mut encoder);
+        self.vanilla_pass.render(&frame.view, None, &mut encoder);
         self.queue.submit(std::iter::once(encoder.finish()));
         Ok(())
     }

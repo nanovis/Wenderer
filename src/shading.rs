@@ -1,6 +1,7 @@
 use anyhow::*;
 use image::GenericImageView;
 use std::num::NonZeroU32;
+use wgpu::*;
 
 pub struct Texture {
     pub texture: wgpu::Texture,
@@ -54,6 +55,42 @@ impl Texture {
             compare: Some(wgpu::CompareFunction::LessEqual), // highlight: If we do decide to render our depth texture, we need to use CompareFunction::LessEqual. This is due to how the samplerShadow and sampler2DShadow() interacts with the texture() function in GLSL
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
+            ..Default::default()
+        });
+        Self {
+            texture,
+            view,
+            sampler,
+        }
+    }
+
+    pub fn create_render_buffer(
+        dimensions: (u32, u32),
+        device: &wgpu::Device,
+        label: Option<&str>,
+    ) -> Self {
+        let size = wgpu::Extent3d {
+            width: dimensions.0,
+            height: dimensions.1,
+            depth_or_array_layers: 1,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label,
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba32Float,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::RENDER_ATTACHMENT,
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
             ..Default::default()
         });
         Self {
