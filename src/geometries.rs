@@ -3,7 +3,9 @@ use crate::rendering::{Geometry, OPENGL_TO_WGPU_MATRIX};
 use cgmath::{Matrix4, Vector2, Vector3, Vector4};
 use rayon::prelude::*;
 use std::mem::size_of;
-use wgpu::{BufferAddress, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat};
+use wgpu::{
+    BufferAddress, IndexFormat, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat,
+};
 
 const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = VertexBufferLayout {
     array_stride: size_of::<Vertex2>() as BufferAddress,
@@ -80,6 +82,10 @@ impl Geometry for Mesh2 {
         bytemuck::cast_slice(self.indices.as_slice())
     }
 
+    fn get_index_format(&self) -> IndexFormat {
+        IndexFormat::Uint32
+    }
+
     fn get_num_indices(&self) -> usize {
         self.indices.len()
     }
@@ -153,6 +159,10 @@ impl Geometry for Mesh3 {
         bytemuck::cast_slice(self.indices.as_slice())
     }
 
+    fn get_index_format(&self) -> IndexFormat {
+        IndexFormat::Uint32
+    }
+
     fn get_num_indices(&self) -> usize {
         self.indices.len()
     }
@@ -198,6 +208,10 @@ impl Geometry for Pentagon {
 
     fn get_index_raw(&self) -> &[u8] {
         bytemuck::cast_slice(Self::INDICES)
+    }
+
+    fn get_index_format(&self) -> IndexFormat {
+        IndexFormat::Uint16
     }
 
     fn get_num_indices(&self) -> usize {
@@ -262,6 +276,10 @@ impl Geometry for Rectangle {
 
     fn get_index_raw(&self) -> &[u8] {
         self.mesh.get_index_raw()
+    }
+
+    fn get_index_format(&self) -> IndexFormat {
+        self.mesh.get_index_format()
     }
 
     fn get_num_indices(&self) -> usize {
@@ -332,6 +350,10 @@ impl Geometry for Cube {
 
     fn get_index_raw(&self) -> &[u8] {
         bytemuck::cast_slice(Self::INDICES)
+    }
+
+    fn get_index_format(&self) -> IndexFormat {
+        IndexFormat::Uint16
     }
 
     fn get_num_indices(&self) -> usize {

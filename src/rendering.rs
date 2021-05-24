@@ -24,6 +24,7 @@ pub trait Geometry {
     fn vertex_desc(&self) -> VertexBufferLayout;
     fn get_vertex_raw(&self) -> &[u8];
     fn get_index_raw(&self) -> &[u8];
+    fn get_index_format(&self) -> IndexFormat;
     fn get_num_indices(&self) -> usize;
 }
 
@@ -298,7 +299,10 @@ impl RenderPass for ColorPass {
         // The second parameter is the slice of the buffer to use.
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+        render_pass.set_index_buffer(
+            self.index_buffer.slice(..),
+            Self::GEOMETRY.get_index_format(),
+        );
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
@@ -462,7 +466,7 @@ impl RenderPass for VanillaPass {
         // The second parameter is the slice of the buffer to use.
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), self.canvas.get_index_format());
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
@@ -624,7 +628,7 @@ impl RenderPass for DepthPass {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), self.canvas.get_index_format());
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
 }
