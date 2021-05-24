@@ -75,7 +75,7 @@ impl State {
             &device,
             &queue,
             &sc_desc,
-            &TextureFormat::Rgba32Float,
+            &TextureFormat::Rgba8UnormSrgb,
             &camera,
         );
         let render_buffer = Texture::create_render_buffer(
@@ -83,7 +83,7 @@ impl State {
             &device,
             Some("Render buffer texture"),
         );
-        let vanilla_pass = VanillaPass::new(&color_pass.image_texture, &device, &sc_desc);
+        let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc);
         Self {
             surface,
             device,
