@@ -305,7 +305,6 @@ impl RenderPass for ColorPass {
     }
 }
 
-// TODO: need debug
 pub struct VanillaPass {
     texture_bind_group_layout: BindGroupLayout,
     texture_bind_group: BindGroup,
@@ -313,12 +312,12 @@ pub struct VanillaPass {
     index_buffer: Buffer,
     num_depth_indices: u32,
     render_pipeline: RenderPipeline,
-    geometry: Rectangle,
+    canvas: Rectangle,
 }
 
 impl VanillaPass {
     pub fn new(image_texture: &Tex, device: &Device, target_format: &TextureFormat) -> Self {
-        let geometry = Rectangle::new();
+        let canvas = Rectangle::new();
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
@@ -366,13 +365,13 @@ impl VanillaPass {
         // create vertex buffer
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: geometry.get_vertex_raw(),
+            contents: canvas.get_vertex_raw(),
             usage: BufferUsage::VERTEX,
         });
         // create index buffer
         let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: geometry.get_index_raw(),
+            contents: canvas.get_index_raw(),
             usage: BufferUsage::INDEX,
         });
 
@@ -390,7 +389,7 @@ impl VanillaPass {
             vertex: VertexState {
                 module: &vs_module,
                 entry_point: "main",
-                buffers: &[geometry.vertex_desc()],
+                buffers: &[canvas.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &fs_module,
@@ -418,8 +417,8 @@ impl VanillaPass {
             texture_bind_group,
             vertex_buffer,
             index_buffer,
-            num_depth_indices: geometry.get_num_indices() as u32,
-            geometry,
+            num_depth_indices: canvas.get_num_indices() as u32,
+            canvas,
             render_pipeline,
         }
     }
@@ -463,7 +462,7 @@ impl RenderPass for VanillaPass {
         // The second parameter is the slice of the buffer to use.
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }

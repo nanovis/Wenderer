@@ -1,5 +1,5 @@
 use futures::executor::block_on;
-use wenderer::rendering::{Camera, ColorPass, DepthPass, RenderPass, VanillaPass};
+use wenderer::rendering::{Camera, ColorPass, RenderPass, VanillaPass};
 use wenderer::shading::Tex;
 use wenderer::utils::CameraController;
 use winit::{
