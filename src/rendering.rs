@@ -317,7 +317,7 @@ pub struct VanillaPass {
 
 impl VanillaPass {
     pub fn new(image_texture: &Tex, device: &Device, target_format: &TextureFormat) -> Self {
-        let canvas = Rectangle::new();
+        let canvas = Rectangle::new_unit_rectangle();
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
@@ -481,7 +481,7 @@ pub struct DepthPass {
 
 impl DepthPass {
     pub fn new(device: &Device, sc_desc: &SwapChainDescriptor) -> Self {
-        let canvas = Rectangle::new();
+        let canvas = Rectangle::new_unit_rectangle();
         let texture = Tex::create_depth_texture(device, sc_desc, "depth_texture");
         let layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Depth Pass Layout"),

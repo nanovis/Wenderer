@@ -212,7 +212,26 @@ pub struct Rectangle {
 impl Rectangle {
     const INDICES: &'static [u32] = &[0, 1, 2, 0, 2, 3];
 
-    pub fn new() -> Self {
+    pub fn new_standard_rectangle() -> Self {
+        let pos = vec![
+            V3::new(-1.0, -1.0, 0.0),
+            V3::new(1.0, -1.0, 0.0),
+            V3::new(1.0, 1.0, 0.0),
+            V3::new(-1.0, 1.0, 0.0),
+        ];
+        let attribs = vec![
+            V2::new(0.0, 1.0),
+            V2::new(1.0, 1.0),
+            V2::new(1.0, 0.0),
+            V2::new(0.0, 0.0),
+        ];
+        let indices = Self::INDICES.to_vec();
+        Self {
+            mesh: Mesh2::new(&pos, &indices, &attribs, None),
+        }
+    }
+
+    pub fn new_unit_rectangle() -> Self {
         let pos = vec![
             V3::new(0.0, 0.0, 0.0),
             V3::new(1.0, 0.0, 0.0),
