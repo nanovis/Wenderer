@@ -7,5 +7,4 @@ layout(set=0, binding = 1) uniform sampler samp;
 
 void main() {
     f_color = texture(sampler2D(tex, samp), vTexCoord);
-    f_color = vec4(1.0,0.0,0.0,1.0);
 }
