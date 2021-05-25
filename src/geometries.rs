@@ -45,23 +45,28 @@ impl Mesh2 {
         transform_matrix: Option<Mat4>,
     ) -> Self {
         assert_eq!(vertices.len(), attribs_2D.len());
-        let transform_matrix = if let Some(transform_mat) = transform_matrix {
-            transform_mat * OPENGL_TO_WGPU_MATRIX
-        } else {
-            OPENGL_TO_WGPU_MATRIX
+        let vertices: Vec<Vertex2> = match transform_matrix {
+            Some(transform_mat) => vertices
+                .par_iter()
+                .map(|v| {
+                    let v = transform_mat * V4::new(v.x, v.y, v.z, 1.0);
+                    v.xyz() / v.w
+                })
+                .zip(attribs_2D)
+                .map(|(v, a)| Vertex2 {
+                    position: [v.x, v.y, v.z],
+                    attrib: [a.x, a.y],
+                })
+                .collect(),
+            None => vertices
+                .par_iter()
+                .zip(attribs_2D)
+                .map(|(v, a)| Vertex2 {
+                    position: [v.x, v.y, v.z],
+                    attrib: [a.x, a.y],
+                })
+                .collect(),
         };
-        let vertices: Vec<Vertex2> = vertices
-            .par_iter()
-            .map(|v| {
-                let v = transform_matrix * V4::new(v.x, v.y, v.z, 1.0);
-                v.xyz() / v.w
-            })
-            .zip(attribs_2D)
-            .map(|(v, a)| Vertex2 {
-                position: [v.x, v.y, v.z],
-                attrib: [a.x, a.y],
-            })
-            .collect();
         let index_length = indices.len();
         if vertices.len() <= u16::MAX as usize {
             let indices = indices.iter().map(|x| *x as u16).collect();
@@ -128,23 +133,28 @@ impl Mesh3 {
         transform_matrix: Option<Mat4>,
     ) -> Self {
         assert_eq!(vertices.len(), attribs_3D.len());
-        let transform_matrix = if let Some(transform_mat) = transform_matrix {
-            transform_mat * OPENGL_TO_WGPU_MATRIX
-        } else {
-            OPENGL_TO_WGPU_MATRIX
+        let vertices: Vec<Vertex3> = match transform_matrix {
+            Some(transform_mat) => vertices
+                .par_iter()
+                .map(|v| {
+                    let v = transform_mat * V4::new(v.x, v.y, v.z, 1.0);
+                    v.xyz() / v.w
+                })
+                .zip(attribs_3D)
+                .map(|(v, a)| Vertex3 {
+                    position: [v.x, v.y, v.z],
+                    attrib: [a.x, a.y, a.z],
+                })
+                .collect(),
+            None => vertices
+                .par_iter()
+                .zip(attribs_3D)
+                .map(|(v, a)| Vertex3 {
+                    position: [v.x, v.y, v.z],
+                    attrib: [a.x, a.y, a.z],
+                })
+                .collect(),
         };
-        let vertices: Vec<Vertex3> = vertices
-            .par_iter()
-            .map(|v| {
-                let v = transform_matrix * V4::new(v.x, v.y, v.z, 1.0);
-                v.xyz() / v.w
-            })
-            .zip(attribs_3D)
-            .map(|(v, a)| Vertex3 {
-                position: [v.x, v.y, v.z],
-                attrib: [a.x, a.y, a.z],
-            })
-            .collect();
         let index_length = indices.len();
         if vertices.len() <= u16::MAX as usize {
             let indices = indices.iter().map(|x| *x as u16).collect();
@@ -283,7 +293,7 @@ impl Rectangle {
         ];
         let indices = Self::INDICES.to_vec();
         Self {
-            mesh: Mesh2::new(&pos, &indices, &attribs, None),
+            mesh: Mesh2::new(&pos, &indices, &attribs, Some(OPENGL_TO_WGPU_MATRIX)),
         }
     }
 
@@ -302,7 +312,7 @@ impl Rectangle {
         ];
         let indices = Self::INDICES.to_vec();
         Self {
-            mesh: Mesh2::new(&pos, &indices, &attribs, None),
+            mesh: Mesh2::new(&pos, &indices, &attribs, Some(OPENGL_TO_WGPU_MATRIX)),
         }
     }
 }

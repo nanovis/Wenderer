@@ -1,4 +1,4 @@
-use crate::geometries::{Mesh3, V2, V3};
+use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 

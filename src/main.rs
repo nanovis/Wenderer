@@ -2,6 +2,7 @@ use futures::executor::block_on;
 use wenderer::rendering::{Camera, ColorPass, RenderPass, VanillaPass};
 use wenderer::shading::Tex;
 use wenderer::utils::CameraController;
+use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -60,9 +61,9 @@ impl State {
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
         // rendering configurations
         let camera = Camera {
-            eye: (0.0, 1.0, 2.0).into(),
+            eye: (0.0, -2.5, 1.0).into(),
             center: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
+            up: cgmath::Vector3::unit_z(),
             aspect: (sc_desc.width as f32) / (sc_desc.height as f32),
             fovy: 45.0,
             znear: 0.1,
@@ -107,14 +108,14 @@ impl State {
             return true;
         }
         match event {
-            WindowEvent::CursorMoved { position, .. } => {
-                if position.x > (self.size.width / 2) as f64 {
-                    self.color_pass.clear_color = (0.3, 0.2, 0.1, 1.0);
-                } else {
-                    self.color_pass.clear_color = (0.1, 0.2, 0.3, 1.0);
-                }
-                return true;
-            }
+            // WindowEvent::CursorMoved { position, .. } => {
+            //     if position.x > (self.size.width / 2) as f64 {
+            //         self.color_pass.clear_color = (0.3, 0.2, 0.1, 1.0);
+            //     } else {
+            //         self.color_pass.clear_color = (0.1, 0.2, 0.3, 1.0);
+            //     }
+            //     return true;
+            // }
             _ => {}
         }
         return false;
@@ -147,7 +148,10 @@ impl State {
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_inner_size(PhysicalSize::new(1000, 1000))
+        .build(&event_loop)
+        .unwrap();
     let mut state = block_on(State::new(&window));
 
     event_loop.run(move |event, _, control_flow| match event {

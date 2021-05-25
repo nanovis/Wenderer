@@ -3,8 +3,9 @@ use wgpu::util::DeviceExt;
 use wgpu::*;
 
 use crate::data::Uniforms;
-use crate::geometries::{Pentagon, Rectangle};
+use crate::geometries::{Mesh3, Rectangle};
 use crate::shading::Tex;
+use crate::utils::create_cube_fbo;
 use crevice::std140::{AsStd140, Std140};
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
@@ -69,11 +70,10 @@ pub struct ColorPass {
     num_depth_indices: u32,
     render_pipeline: RenderPipeline,
     pub clear_color: (f64, f64, f64, f64),
+    cube: Mesh3,
 }
 
 impl ColorPass {
-    const GEOMETRY: Pentagon = Pentagon;
-
     pub fn new(
         device: &Device,
         queue: &Queue,
@@ -81,6 +81,7 @@ impl ColorPass {
         target_format: &TextureFormat,
         camera: &Camera,
     ) -> Self {
+        let cube = create_cube_fbo();
         // create texture
         let diffuse_bytes = include_bytes!("../data/happy-tree.png");
         let image_texture =
@@ -165,13 +166,13 @@ impl ColorPass {
         // create vertex buffer
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: Self::GEOMETRY.get_vertex_raw(),
+            contents: cube.get_vertex_raw(),
             usage: BufferUsage::VERTEX,
         });
         // create index buffer
         let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: Self::GEOMETRY.get_index_raw(),
+            contents: cube.get_index_raw(),
             usage: BufferUsage::INDEX,
         });
 
@@ -189,7 +190,7 @@ impl ColorPass {
             vertex: VertexState {
                 module: &vs_module,
                 entry_point: "main",
-                buffers: &[Self::GEOMETRY.vertex_desc()],
+                buffers: &[cube.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &fs_module,
@@ -236,9 +237,10 @@ impl ColorPass {
             uniforms,
             uniform_bind_group,
             uniform_buffer,
-            clear_color: (0.1, 0.2, 0.3, 1.0),
-            num_depth_indices: Self::GEOMETRY.get_num_indices() as u32,
+            clear_color: (0.0, 0.0, 0.0, 1.0),
+            num_depth_indices: cube.get_num_indices() as u32,
             render_pipeline,
+            cube,
         }
     }
 
@@ -299,10 +301,7 @@ impl RenderPass for ColorPass {
         // The second parameter is the slice of the buffer to use.
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(
-            self.index_buffer.slice(..),
-            Self::GEOMETRY.get_index_format(),
-        );
+        render_pass.set_index_buffer(self.index_buffer.slice(..), self.cube.get_index_format());
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
