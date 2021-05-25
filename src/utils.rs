@@ -1,3 +1,4 @@
+use crate::geometries::{Mesh3, V2, V3};
 use crate::rendering::Camera;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
@@ -99,4 +100,43 @@ impl CameraController {
             camera.eye = camera.center - (forward - right * self.speed).normalize() * forward_mag;
         }
     }
+}
+
+pub fn create_cube_fbo() -> Mesh3 {
+    let side = 1.0;
+    let side2 = side / 2.0;
+    let vertices = vec![
+        // 4 vertices on z = 0.5
+        V3::new(-side2, -side2, side2),
+        V3::new(side2, -side2, side2),
+        V3::new(side2, side2, side2),
+        V3::new(-side2, side2, side2),
+        // 4 vertices on z = -0.5
+        V3::new(-side2, -side2, -side2),
+        V3::new(side2, -side2, -side2),
+        V3::new(side2, side2, -side2),
+        V3::new(-side2, side2, -side2),
+    ];
+    let attribs_3D = vec![
+        // attributes of 4 vertices on z = 0.5
+        V3::new(0.0, 0.0, side),
+        V3::new(side, 0.0, side),
+        V3::new(side, side, side),
+        V3::new(0.0, side, side),
+        // attributes of 4 vertices on z = 0.5
+        V3::new(0.0, 0.0, 0.0),
+        V3::new(side, 0.0, 0.0),
+        V3::new(side, side, 0.0),
+        V3::new(0.0, side, 0.0),
+    ];
+    #[rustfmt::skip]
+    let indices = vec![
+        0, 1, 3, 3, 1, 2,
+        2, 1, 5, 2, 5, 6,
+        3, 2, 7, 7, 2, 6,
+        4, 0, 3, 4, 3, 7,
+        4, 1, 0, 4, 5, 1,
+        7, 6, 5, 7, 5, 4
+    ];
+    Mesh3::new(&vertices, &indices, &attribs_3D, None)
 }

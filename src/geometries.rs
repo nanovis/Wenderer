@@ -24,10 +24,10 @@ const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = VertexBufferLayout {
     ],
 };
 
-type V2 = Vector2<f32>;
-type V3 = Vector3<f32>;
-type V4 = Vector4<f32>;
-type Mat4 = Matrix4<f32>;
+pub type V2 = Vector2<f32>;
+pub type V3 = Vector3<f32>;
+pub type V4 = Vector4<f32>;
+pub type Mat4 = Matrix4<f32>;
 
 pub struct Mesh2 {
     vertices: Vec<Vertex2>,
