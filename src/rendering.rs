@@ -74,7 +74,6 @@ pub struct D3Pass {
 impl D3Pass {
     pub fn new(
         device: &Device,
-        queue: &Queue,
         sc_desc: &SwapChainDescriptor,
         target_format: &TextureFormat,
         render_front_face: bool,
@@ -264,7 +263,7 @@ impl RenderPass for D3Pass {
     }
 }
 
-pub struct VanillaPass {
+pub struct CanvasPass {
     texture_bind_group_layout: BindGroupLayout,
     texture_bind_group: BindGroup,
     vertex_buffer: Buffer,
@@ -274,9 +273,14 @@ pub struct VanillaPass {
     canvas: Rectangle,
 }
 
-impl VanillaPass {
-    pub fn new(image_texture: &Tex, device: &Device, target_format: &TextureFormat) -> Self {
-        let canvas = Rectangle::new_unit_rectangle();
+impl CanvasPass {
+    pub fn new(
+        front_face_render_buffer: &Tex,
+        back_face_render_buffer: &Tex,
+        device: &Device,
+        target_format: &TextureFormat,
+    ) -> Self {
+        let canvas = Rectangle::new_standard_rectangle();
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let texture_bind_group_layout =
@@ -302,22 +306,49 @@ impl VanillaPass {
                         },
                         count: None,
                     },
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: TextureViewDimension::D2,
+                            sample_type: TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Sampler {
+                            comparison: false, // mostly for depth texture
+                            filtering: true,
+                        },
+                        count: None,
+                    },
                 ],
             });
         // That's because a BindGroup is a more specific declaration of the BindGroupLayout.
         // The reason why they're separate is it allows us to swap out BindGroups on the fly,
         // so long as they all share the same BindGroupLayout
         let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("diffuse_bind_group"),
+            label: Some("Backface and front face bind group"),
             layout: &texture_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&image_texture.view),
+                    resource: BindingResource::TextureView(&front_face_render_buffer.view),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(&image_texture.sampler),
+                    resource: BindingResource::Sampler(&front_face_render_buffer.sampler),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: BindingResource::TextureView(&back_face_render_buffer.view),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: BindingResource::Sampler(&back_face_render_buffer.sampler),
                 },
             ],
         });
@@ -339,8 +370,8 @@ impl VanillaPass {
             bind_group_layouts: &[&texture_bind_group_layout],
             push_constant_ranges: &[],
         });
-        let vs_module = device.create_shader_module(&include_spirv!("shaders/vanilla.vert.spv"));
-        let fs_module = device.create_shader_module(&include_spirv!("shaders/vanilla.frag.spv"));
+        let vs_module = device.create_shader_module(&include_spirv!("shaders/canvas.vert.spv"));
+        let fs_module = device.create_shader_module(&include_spirv!("shaders/canvas.frag.spv"));
 
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -381,10 +412,40 @@ impl VanillaPass {
             render_pipeline,
         }
     }
+
+    pub fn change_bound_face_textures(
+        &mut self,
+        device: &Device,
+        front_face_texture: &Tex,
+        back_face_texture: &Tex,
+    ) {
+        self.texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Backface and front face bind group"),
+            layout: &self.texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&front_face_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&front_face_texture.sampler),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: BindingResource::TextureView(&back_face_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: BindingResource::Sampler(&back_face_texture.sampler),
+                },
+            ],
+        });
+    }
 }
 
-impl RenderPass for VanillaPass {
-    fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {}
+impl RenderPass for CanvasPass {
+    fn resize(&mut self, _device: &Device, _sc_desc: &SwapChainDescriptor) {}
 
     fn render(
         &self,

@@ -1,7 +1,7 @@
 use futures::executor::block_on;
-use wenderer::rendering::{Camera, D3Pass, RenderPass, VanillaPass};
+use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
-use wenderer::utils::CameraController;
+use wenderer::utils::{load_data, CameraController};
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -18,16 +18,18 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
-    render_buffer: Tex,
-    color_pass: D3Pass,
-    vanilla_pass: VanillaPass,
+    front_face_pass: D3Pass,
+    front_face_render_buffer: Tex,
+    back_face_pass: D3Pass,
+    back_face_render_buffer: Tex,
+    canvas_pass: CanvasPass,
 }
 
 impl State {
     // need async because we need to await some struct creation here
     async fn new(window: &Window) -> Self {
         let size = window.inner_size();
-
+        let (volume_size, volume_data) = load_data();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -69,20 +71,36 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
-        let render_buffer = Tex::create_render_buffer(
+        let front_face_render_buffer = Tex::create_render_buffer(
             (sc_desc.width, sc_desc.height),
             &device,
-            Some("Render buffer texture"),
+            Some("Front face render buffer texture"),
         );
-        let color_pass = D3Pass::new(
+        let front_face_pass = D3Pass::new(
             &device,
-            &queue,
             &sc_desc,
-            &render_buffer.format,
+            &front_face_render_buffer.format,
+            true,
+            &camera,
+        );
+        let back_face_render_buffer = Tex::create_render_buffer(
+            (sc_desc.width, sc_desc.height),
+            &device,
+            Some("Back face render buffer texture"),
+        );
+        let back_face_pass = D3Pass::new(
+            &device,
+            &sc_desc,
+            &back_face_render_buffer.format,
             false,
             &camera,
         );
-        let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc.format);
+        let canvas_pass = CanvasPass::new(
+            &front_face_render_buffer,
+            &back_face_render_buffer,
+            &device,
+            &sc_desc.format,
+        );
         Self {
             surface,
             device,
@@ -92,9 +110,11 @@ impl State {
             size,
             camera,
             camera_controller: CameraController::new(0.2),
-            color_pass,
-            render_buffer,
-            vanilla_pass,
+            front_face_pass,
+            back_face_pass,
+            front_face_render_buffer,
+            back_face_render_buffer,
+            canvas_pass,
         }
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
@@ -103,10 +123,32 @@ impl State {
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
-        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-        self.color_pass.resize(&self.device, &self.sc_desc);
+
         self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
-        // TODO: resize render buffer and vanilla pass
+
+        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+        self.front_face_pass.resize(&self.device, &self.sc_desc);
+        self.back_face_pass.resize(&self.device, &self.sc_desc);
+        self.front_face_pass
+            .update_view_proj_uniform(&self.camera, &self.queue);
+        self.back_face_pass
+            .update_view_proj_uniform(&self.camera, &self.queue);
+
+        self.front_face_render_buffer = Tex::create_render_buffer(
+            (self.sc_desc.width, self.sc_desc.height),
+            &self.device,
+            Some("Front Face Render Buffer"),
+        );
+        self.back_face_render_buffer = Tex::create_render_buffer(
+            (self.sc_desc.width, self.sc_desc.height),
+            &self.device,
+            Some("Back Face Render Buffer"),
+        );
+        self.canvas_pass.change_bound_face_textures(
+            &self.device,
+            &self.front_face_render_buffer,
+            &self.back_face_render_buffer,
+        );
     }
     // input() returns a bool to indicate whether an event has been fully processed.
     // If the method returns true, the main loop won't process the event any further.
@@ -129,7 +171,9 @@ impl State {
     }
     fn update(&mut self) {
         self.camera_controller.update_camera(&mut self.camera);
-        self.color_pass
+        self.front_face_pass
+            .update_view_proj_uniform(&self.camera, &self.queue);
+        self.back_face_pass
             .update_view_proj_uniform(&self.camera, &self.queue);
     }
     // We also need to create a CommandEncoder to create the actual commands to send to the gpu.
@@ -143,10 +187,11 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
-        self.color_pass
-            .render(&self.render_buffer.view, None, &mut encoder);
-        // self.depth_pass.render(&frame.view, None, &mut encoder);
-        self.vanilla_pass.render(&frame.view, None, &mut encoder);
+        self.front_face_pass
+            .render(&self.front_face_render_buffer.view, None, &mut encoder);
+        self.back_face_pass
+            .render(&self.back_face_render_buffer.view, None, &mut encoder);
+        self.canvas_pass.render(&frame.view, None, &mut encoder);
         self.queue.submit(std::iter::once(encoder.finish()));
         Ok(())
     }
