@@ -74,7 +74,14 @@ impl State {
             &device,
             Some("Render buffer texture"),
         );
-        let color_pass = ColorPass::new(&device, &queue, &sc_desc, &render_buffer.format, &camera);
+        let color_pass = ColorPass::new(
+            &device,
+            &queue,
+            &sc_desc,
+            &render_buffer.format,
+            false,
+            &camera,
+        );
         let vanilla_pass = VanillaPass::new(&render_buffer, &device, &sc_desc.format);
         Self {
             surface,

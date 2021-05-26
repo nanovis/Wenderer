@@ -69,6 +69,7 @@ pub struct ColorPass {
     uniform_buffer: Buffer,
     num_depth_indices: u32,
     render_pipeline: RenderPipeline,
+    depth_clear_op: LoadOp<f32>,
     pub clear_color: (f64, f64, f64, f64),
     cube: Mesh3,
 }
@@ -79,8 +80,17 @@ impl ColorPass {
         queue: &Queue,
         sc_desc: &SwapChainDescriptor,
         target_format: &TextureFormat,
+        render_front_face: bool,
         camera: &Camera,
     ) -> Self {
+        // configuring back and front face rendering
+        let face_render_config = if render_front_face {
+            (Face::Back, CompareFunction::Less, LoadOp::Clear(1.0))
+        } else {
+            (Face::Front, CompareFunction::Greater, LoadOp::Clear(0.0))
+        };
+        let depth_clear_op = face_render_config.2;
+        // create geometry
         let cube = create_cube_fbo();
         // create texture
         let diffuse_bytes = include_bytes!("../data/happy-tree.png");
@@ -205,7 +215,7 @@ impl ColorPass {
                 topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
-                cull_mode: Some(Face::Back),
+                cull_mode: Some(face_render_config.0),
                 polygon_mode: PolygonMode::Fill,
                 clamp_depth: false,
                 conservative: false,
@@ -213,7 +223,7 @@ impl ColorPass {
             depth_stencil: Some(DepthStencilState {
                 format: Tex::DEPTH_FORMAT,
                 depth_write_enabled: true,
-                depth_compare: CompareFunction::Less, // tells us when to discard a new pixel
+                depth_compare: face_render_config.1, // tells us when to discard a new pixel
                 stencil: StencilState::default(),
                 bias: DepthBiasState {
                     constant: 2, // Corresponds to bilinear filtering
@@ -237,6 +247,7 @@ impl ColorPass {
             uniforms,
             uniform_bind_group,
             uniform_buffer,
+            depth_clear_op,
             clear_color: (0.0, 0.0, 0.0, 1.0),
             num_depth_indices: cube.get_num_indices() as u32,
             render_pipeline,
@@ -288,7 +299,7 @@ impl RenderPass for ColorPass {
             depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                 view: external_depth_view.unwrap_or(&self.depth_texture.view),
                 depth_ops: Some(Operations {
-                    load: LoadOp::Clear(1.0),
+                    load: self.depth_clear_op.clone(),
                     store: true,
                 }),
                 stencil_ops: None,
