@@ -1,5 +1,6 @@
 use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
+use rayon::prelude::*;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 pub struct CameraController {
@@ -139,4 +140,33 @@ pub fn create_cube_fbo() -> Mesh3 {
         7, 6, 5, 7, 5, 4
     ];
     Mesh3::new(&vertices, &indices, &attribs_3D, None)
+}
+
+pub fn load_data() -> ((usize, usize, usize), Vec<f32>) {
+    let bytes = std::fs::read("./data/skewed_head.dat").expect("Error when reading file");
+    let unsigned_shorts: Vec<u16> = bytes
+        .chunks_exact(2)
+        .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
+        .collect();
+    let x = unsigned_shorts.get(0).unwrap().clone() as usize;
+    let y = unsigned_shorts.get(1).unwrap().clone() as usize;
+    let z = unsigned_shorts.get(2).unwrap().clone() as usize;
+    let expected_data_num = x * y * z;
+    const U16MAX_F: f32 = u16::MAX as f32;
+    let data: Vec<f32> = unsigned_shorts
+        .par_iter()
+        .skip(3)
+        .map(|num| ((*num << 4) as f32) / U16MAX_F)
+        .collect();
+    assert_eq!(expected_data_num, data.len(), "Data size not match");
+    return ((x, y, z), data);
+}
+
+#[cfg(test)]
+mod util_tests {
+    use super::*;
+    #[test]
+    fn test_load_data() {
+        let (_, _data) = load_data();
+    }
 }
