@@ -5,7 +5,7 @@ layout(location=1) in vec3 v_coord;
 
 layout(location=0) out vec3 vCoord;
 
-layout(set=1, binding=0)
+layout(set=0, binding=0)
 uniform Uniforms{
     mat4 u_view_proj;
 };

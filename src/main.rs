@@ -1,5 +1,5 @@
 use futures::executor::block_on;
-use wenderer::rendering::{Camera, ColorPass, RenderPass, VanillaPass};
+use wenderer::rendering::{Camera, D3Pass, RenderPass, VanillaPass};
 use wenderer::shading::Tex;
 use wenderer::utils::CameraController;
 use winit::dpi::PhysicalSize;
@@ -19,7 +19,7 @@ struct State {
     camera: Camera,
     camera_controller: CameraController,
     render_buffer: Tex,
-    color_pass: ColorPass,
+    color_pass: D3Pass,
     vanilla_pass: VanillaPass,
 }
 
@@ -74,7 +74,7 @@ impl State {
             &device,
             Some("Render buffer texture"),
         );
-        let color_pass = ColorPass::new(
+        let color_pass = D3Pass::new(
             &device,
             &queue,
             &sc_desc,

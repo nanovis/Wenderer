@@ -57,11 +57,8 @@ impl Camera {
     }
 }
 
-pub struct ColorPass {
-    pub image_texture: Tex,
+pub struct D3Pass {
     depth_texture: Tex,
-    texture_bind_group_layout: BindGroupLayout,
-    texture_bind_group: BindGroup,
     uniform_bind_group: BindGroup,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
@@ -74,7 +71,7 @@ pub struct ColorPass {
     cube: Mesh3,
 }
 
-impl ColorPass {
+impl D3Pass {
     pub fn new(
         device: &Device,
         queue: &Queue,
@@ -92,56 +89,8 @@ impl ColorPass {
         let depth_clear_op = face_render_config.2;
         // create geometry
         let cube = create_cube_fbo();
-        // create texture
-        let diffuse_bytes = include_bytes!("../data/happy-tree.png");
-        let image_texture =
-            Tex::from_bytes(&device, queue, diffuse_bytes, "happy_tree.png").unwrap();
         // create depth texture
         let depth_texture = Tex::create_depth_texture(&device, &sc_desc, "depth_texture");
-        // A BindGroup describes a set of resources and how they can be accessed by a shader.
-        // We create a BindGroup using a BindGroupLayout.
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("Texture binding group layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStage::FRAGMENT,
-                        ty: BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: TextureViewDimension::D2,
-                            sample_type: TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStage::FRAGMENT,
-                        ty: BindingType::Sampler {
-                            comparison: false, // mostly for depth texture
-                            filtering: true,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-        // That's because a BindGroup is a more specific declaration of the BindGroupLayout.
-        // The reason why they're separate is it allows us to swap out BindGroups on the fly,
-        // so long as they all share the same BindGroupLayout
-        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("diffuse_bind_group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&image_texture.view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&image_texture.sampler),
-                },
-            ],
-        });
         // create uniforms
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(camera);
@@ -188,7 +137,7 @@ impl ColorPass {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+            bind_group_layouts: &[&uniform_bind_group_layout],
             push_constant_ranges: &[],
         });
         let vs_module = device.create_shader_module(&include_spirv!("shaders/shader.vert.spv"));
@@ -238,10 +187,7 @@ impl ColorPass {
             }, // the config of this struct is the same as MultisampleState::default()
         });
         Self {
-            image_texture,
             depth_texture,
-            texture_bind_group_layout,
-            texture_bind_group,
             vertex_buffer,
             index_buffer,
             uniforms,
@@ -265,7 +211,7 @@ impl ColorPass {
     }
 }
 
-impl RenderPass for ColorPass {
+impl RenderPass for D3Pass {
     fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {
         self.depth_texture = Tex::create_depth_texture(device, sc_desc, "depth texture");
     }
@@ -313,8 +259,7 @@ impl RenderPass for ColorPass {
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), self.cube.get_index_format());
-        render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
 }
