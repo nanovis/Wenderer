@@ -11,14 +11,15 @@ layout(set=1, binding = 1) uniform sampler volumeSampler;
 layout(set=2, binding = 0) uniform texture1D tf_tex;
 layout(set=2, binding = 1) uniform sampler tf_sampler;
 
-// TODO: change to uniforms
-float StepSize = 0.0025;
-float BaseDistance = 0.0025;
-float OpacityThreshold = 0.95;
-float ambient = 0.5;
-float diffuse = 0.5;
-float specular = 0.5;
-float shininess = 32.0;
+layout(set=3, binding=0) uniform Uniforms{
+    float StepSize;
+    float BaseDistance;
+    float OpacityThreshold;
+    float ambient;
+    float diffuse;
+    float specular;
+    float shininess;
+};
 
 float sampleVolume(vec3 position){
     return texture(sampler3D(volumeData, volumeSampler), position).r;

@@ -2,7 +2,7 @@ use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-use crate::data::Uniforms;
+use crate::data::{CanvasShaderUniforms, Uniforms};
 use crate::geometries::{Mesh3, Rectangle};
 use crate::shading::Tex;
 use crate::utils::{create_cube_fbo, load_data, load_example_transfer_function};
@@ -274,6 +274,9 @@ pub struct CanvasPass {
     volume_bind_group: BindGroup,
     tf_bind_group_layout: BindGroupLayout,
     tf_bind_group: BindGroup,
+    uniforms: CanvasShaderUniforms,
+    uniform_bind_group: BindGroup,
+    uniform_buffer: Buffer,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     num_depth_indices: u32,
@@ -453,6 +456,35 @@ impl CanvasPass {
                 },
             ],
         });
+        // create uniform bindings
+        let uniforms = CanvasShaderUniforms::default();
+        let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+            contents: uniforms.as_std140().as_bytes(),
+            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+        });
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
         // create vertex buffer
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -472,6 +504,7 @@ impl CanvasPass {
                 &face_texture_bind_group_layout,
                 &volume_bind_group_layout,
                 &tf_bind_group_layout,
+                &uniform_bind_group_layout,
             ],
             push_constant_ranges: &[],
         });
@@ -514,6 +547,9 @@ impl CanvasPass {
             volume_bind_group,
             tf_bind_group_layout,
             tf_bind_group,
+            uniforms,
+            uniform_bind_group,
+            uniform_buffer,
             vertex_buffer,
             index_buffer,
             num_depth_indices: canvas.get_num_indices() as u32,
@@ -550,6 +586,15 @@ impl CanvasPass {
                 },
             ],
         });
+    }
+
+    pub fn set_uniforms(&mut self, uniforms: &CanvasShaderUniforms, queue: &Queue) {
+        self.uniforms = uniforms.clone();
+        queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            self.uniforms.as_std140().as_bytes(),
+        );
     }
 }
 
@@ -595,6 +640,7 @@ impl RenderPass for CanvasPass {
         render_pass.set_bind_group(0, &self.face_texture_bind_group, &[]);
         render_pass.set_bind_group(1, &self.volume_bind_group, &[]);
         render_pass.set_bind_group(2, &self.tf_bind_group, &[]);
+        render_pass.set_bind_group(3, &self.uniform_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
 }
