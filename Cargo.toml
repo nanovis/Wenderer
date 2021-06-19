@@ -19,6 +19,7 @@ futures = "0.3"
 anyhow = "1.0"
 bytemuck = { version = "1.5", features = ["derive"] }
 rayon = "1.5.1"
+half = { version = "1.7", features = ["num-traits", "bytemuck"] }
 
 [build-dependencies]
 anyhow = "1.0"
