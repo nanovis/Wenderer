@@ -5,8 +5,9 @@ use wgpu::*;
 use crate::data::Uniforms;
 use crate::geometries::{Mesh3, Rectangle};
 use crate::shading::Tex;
-use crate::utils::create_cube_fbo;
+use crate::utils::{create_cube_fbo, load_data, load_example_transfer_function};
 use crevice::std140::{AsStd140, Std140};
+use half::f16;
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
 // That means that in normalized device coordinates the x axis and y axis are in the range of -1.0 to +1.0, and the z axis is 0.0 to +1.0.
@@ -264,8 +265,12 @@ impl RenderPass for D3Pass {
 }
 
 pub struct CanvasPass {
-    texture_bind_group_layout: BindGroupLayout,
-    texture_bind_group: BindGroup,
+    face_texture_bind_group_layout: BindGroupLayout,
+    face_texture_bind_group: BindGroup,
+    volume_bind_group_layout: BindGroupLayout,
+    volume_bind_group: BindGroup,
+    tf_bind_group_layout: BindGroupLayout,
+    tf_bind_group: BindGroup,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     num_depth_indices: u32,
@@ -278,12 +283,21 @@ impl CanvasPass {
         front_face_render_buffer: &Tex,
         back_face_render_buffer: &Tex,
         device: &Device,
+        queue: &Queue,
         target_format: &TextureFormat,
     ) -> Self {
         let canvas = Rectangle::new_standard_rectangle();
+        let (dimensions, data, uint_data) = load_data();
+        let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
+        let extent = Extent3d {
+            width: dimensions.0 as u32,
+            height: dimensions.1 as u32,
+            depth_or_array_layers: dimensions.2 as u32,
+        };
+        let d3tex = Tex::create_3d_texture_red_f16(&extent, &data_f16, device, queue, "Volume");
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
-        let texture_bind_group_layout =
+        let face_texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("Texture binding group layout"),
                 entries: &[
@@ -330,9 +344,9 @@ impl CanvasPass {
         // That's because a BindGroup is a more specific declaration of the BindGroupLayout.
         // The reason why they're separate is it allows us to swap out BindGroups on the fly,
         // so long as they all share the same BindGroupLayout
-        let texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        let face_texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Backface and front face bind group"),
-            layout: &texture_bind_group_layout,
+            layout: &face_texture_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
@@ -352,6 +366,90 @@ impl CanvasPass {
                 },
             ],
         });
+        let volume_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("volume bind group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: TextureViewDimension::D3,
+                            sample_type: TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStage::FRAGMENT,
+                        ty: BindingType::Sampler {
+                            comparison: false, // mostly for depth texture
+                            filtering: true,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        let volume_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("volume bind group"),
+            layout: &volume_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&d3tex.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&d3tex.sampler),
+                },
+            ],
+        });
+        let transfer_function_values = load_example_transfer_function();
+        let transfer_function_texture = Tex::create_1d_texture_rgba8(
+            &transfer_function_values,
+            device,
+            queue,
+            "Transfer function",
+        );
+        let tf_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("tf bind group layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: TextureViewDimension::D1,
+                        sample_type: TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Sampler {
+                        comparison: false, // mostly for depth texture
+                        filtering: true,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let tf_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("volume bind group"),
+            layout: &tf_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&transfer_function_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&transfer_function_texture.sampler),
+                },
+            ],
+        });
         // create vertex buffer
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -367,7 +465,7 @@ impl CanvasPass {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&texture_bind_group_layout],
+            bind_group_layouts: &[&face_texture_bind_group_layout],
             push_constant_ranges: &[],
         });
         let vs_module = device.create_shader_module(&include_spirv!("shaders/canvas.vert.spv"));
@@ -403,8 +501,12 @@ impl CanvasPass {
             multisample: MultisampleState::default(),
         });
         Self {
-            texture_bind_group_layout,
-            texture_bind_group,
+            face_texture_bind_group_layout,
+            face_texture_bind_group,
+            volume_bind_group_layout,
+            volume_bind_group,
+            tf_bind_group_layout,
+            tf_bind_group,
             vertex_buffer,
             index_buffer,
             num_depth_indices: canvas.get_num_indices() as u32,
@@ -419,9 +521,9 @@ impl CanvasPass {
         front_face_texture: &Tex,
         back_face_texture: &Tex,
     ) {
-        self.texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        self.face_texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Backface and front face bind group"),
-            layout: &self.texture_bind_group_layout,
+            layout: &self.face_texture_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
@@ -483,7 +585,9 @@ impl RenderPass for CanvasPass {
         // You can store as many objects in a buffer as your hardware allows, so slice allows us to specify which portion of the buffer to use.
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), self.canvas.get_index_format());
-        render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.face_texture_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.volume_bind_group, &[]);
+        render_pass.set_bind_group(2, &self.tf_bind_group, &[]);
         render_pass.draw_indexed(0..self.num_depth_indices, 0, 0..1);
     }
 }
