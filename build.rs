@@ -63,7 +63,7 @@ fn main() -> Result<()> {
             "main",
             None,
         )?;
-        write(&shader.spv_path, compiled.as_binary_u8());
+        write(&shader.spv_path, compiled.as_binary_u8()).unwrap();
     }
     Ok(())
 }

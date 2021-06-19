@@ -1,6 +1,5 @@
 use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
-use mint::Vector4;
 use rayon::prelude::*;
 use std::iter::FromIterator;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
@@ -120,7 +119,7 @@ pub fn create_cube_fbo() -> Mesh3 {
         V3::new(side2, side2, -side2),
         V3::new(-side2, side2, -side2),
     ];
-    let attribs_3D = vec![
+    let attribs_3d = vec![
         // attributes of 4 vertices on z = 0.5
         V3::new(0.0, 0.0, side),
         V3::new(side, 0.0, side),
@@ -141,7 +140,7 @@ pub fn create_cube_fbo() -> Mesh3 {
         4, 1, 0, 4, 5, 1,
         7, 6, 5, 7, 5, 4
     ];
-    Mesh3::new(&vertices, &indices, &attribs_3D, None)
+    Mesh3::new(&vertices, &indices, &attribs_3d, None)
 }
 
 pub fn load_data() -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {

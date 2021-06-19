@@ -270,9 +270,7 @@ impl RenderPass for D3Pass {
 pub struct CanvasPass {
     face_texture_bind_group_layout: BindGroupLayout,
     face_texture_bind_group: BindGroup,
-    volume_bind_group_layout: BindGroupLayout,
     volume_bind_group: BindGroup,
-    tf_bind_group_layout: BindGroupLayout,
     tf_bind_group: BindGroup,
     uniforms: CanvasShaderUniforms,
     uniform_bind_group: BindGroup,
@@ -293,7 +291,7 @@ impl CanvasPass {
         target_format: &TextureFormat,
     ) -> Self {
         let canvas = Rectangle::new_standard_rectangle();
-        let (dimensions, data, uint_data) = load_data();
+        let (dimensions, data, _uint_data) = load_data();
         let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
         let extent = Extent3d {
             width: dimensions.0 as u32,
@@ -543,9 +541,7 @@ impl CanvasPass {
         Self {
             face_texture_bind_group_layout,
             face_texture_bind_group,
-            volume_bind_group_layout,
             volume_bind_group,
-            tf_bind_group_layout,
             tf_bind_group,
             uniforms,
             uniform_bind_group,
