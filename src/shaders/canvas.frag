@@ -6,6 +6,10 @@ layout(set=0, binding = 0) uniform texture2D front_face_tex;// `set = 0` corresp
 layout(set=0, binding = 1) uniform sampler front_face_sampler;
 layout(set=0, binding = 2) uniform texture2D back_face_tex;
 layout(set=0, binding = 3) uniform sampler back_face_sampler;
+layout(set=1, binding = 0) uniform texture3D data_tex;
+layout(set=1, binding = 1) uniform sampler data_sampler;
+layout(set=2, binding = 0) uniform texture1D tf_tex;
+layout(set=2, binding = 1) uniform sampler tf_sampler;
 
 void main() {
     vec3 front_face_color = texture(sampler2D(front_face_tex, front_face_sampler), vTexCoord).rgb;
