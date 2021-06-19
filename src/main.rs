@@ -65,33 +65,33 @@ impl State {
             eye: (0.0, -2.5, 1.0).into(),
             center: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_z(),
-            aspect: (sc_desc.width as f32) / (sc_desc.height as f32),
+            aspect: (size.width as f32) / (size.height as f32),
             fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
         };
         let front_face_render_buffer = Tex::create_render_buffer(
-            (sc_desc.width, sc_desc.height),
+            (size.width, size.height),
             &device,
             Some("Front face render buffer texture"),
         );
         let front_face_pass = D3Pass::new(
             &device,
-            sc_desc.width,
-            sc_desc.height,
+            size.width,
+            size.height,
             &front_face_render_buffer.format,
             true,
             &camera,
         );
         let back_face_render_buffer = Tex::create_render_buffer(
-            (sc_desc.width, sc_desc.height),
+            (size.width, size.height),
             &device,
             Some("Back face render buffer texture"),
         );
         let back_face_pass = D3Pass::new(
             &device,
-            sc_desc.width,
-            sc_desc.height,
+            size.width,
+            size.height,
             &back_face_render_buffer.format,
             false,
             &camera,
@@ -126,7 +126,7 @@ impl State {
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
 
-        self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
+        self.camera.aspect = self.size.width as f32 / self.size.height as f32;
 
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
         self.front_face_pass
@@ -139,12 +139,12 @@ impl State {
             .update_view_proj_uniform(&self.camera, &self.queue);
 
         self.front_face_render_buffer = Tex::create_render_buffer(
-            (self.sc_desc.width, self.sc_desc.height),
+            (self.size.width, self.size.height),
             &self.device,
             Some("Front Face Render Buffer"),
         );
         self.back_face_render_buffer = Tex::create_render_buffer(
-            (self.sc_desc.width, self.sc_desc.height),
+            (self.size.width, self.size.height),
             &self.device,
             Some("Back Face Render Buffer"),
         );
