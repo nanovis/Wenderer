@@ -206,6 +206,7 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(1000, 1000))
+        .with_title("WebGPU-based DVR")
         .build(&event_loop)
         .unwrap();
     let mut state = block_on(State::new(&window));
