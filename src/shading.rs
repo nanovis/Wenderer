@@ -33,8 +33,8 @@ impl Tex {
             .collect::<Vec<u8>>();
         let size = Extent3d {
             width: length,
-            height: 0,
-            depth_or_array_layers: 0,
+            height: 1,
+            depth_or_array_layers: 1,
         };
         let desc = TextureDescriptor {
             label: Some(label),
