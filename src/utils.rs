@@ -1,5 +1,6 @@
 use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
+use mint::Vector4;
 use rayon::prelude::*;
 use std::iter::FromIterator;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
@@ -162,6 +163,30 @@ pub fn load_data() -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
     let uint_data = Vec::from_iter(unsigned_shorts[3..].iter().cloned());
     assert_eq!(expected_data_num, data.len(), "Data size not match");
     return ((x, y, z), data, uint_data);
+}
+
+pub fn load_example_transfer_function() -> Vec<cgmath::Vector4<u8>> {
+    #[rustfmt::skip]
+    static TF:[f32;48] = [
+        0.0, 0.0, 0.0, 0.0,
+        0.0, 0.5, 0.5, 0.0,
+        0.0, 0.5, 0.5, 0.01,
+        0.0, 0.5, 0.5, 0.0,
+        0.5, 0.5, 0.0, 0.0,
+        0.5, 0.5, 0.0, 0.2,
+        0.5, 0.5, 0.0, 0.5,
+        0.5, 0.5, 0.0, 0.2,
+        0.5, 0.5, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0,
+        1.0, 0.0, 1.0, 0.0,
+        1.0, 0.0, 1.0, 0.8
+    ];
+    TF[..]
+        .chunks_exact(4)
+        .map(|x| cgmath::Vector4::new(x[0], x[1], x[2], x[3]))
+        .map(|v| v * (u8::MAX as f32))
+        .map(|v| cgmath::Vector4::new(v.x as u8, v.y as u8, v.z as u8, v.w as u8))
+        .collect()
 }
 
 #[cfg(test)]
