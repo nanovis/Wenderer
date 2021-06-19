@@ -465,7 +465,11 @@ impl CanvasPass {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&face_texture_bind_group_layout],
+            bind_group_layouts: &[
+                &face_texture_bind_group_layout,
+                &volume_bind_group_layout,
+                &tf_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
         let vs_module = device.create_shader_module(&include_spirv!("shaders/canvas.vert.spv"));
