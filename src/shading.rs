@@ -129,14 +129,10 @@ impl Tex {
         }
     }
 
-    pub fn create_depth_texture(
-        device: &Device,
-        sc_desc: &SwapChainDescriptor,
-        label: &str,
-    ) -> Self {
+    pub fn create_depth_texture(device: &Device, width: u32, height: u32, label: &str) -> Self {
         let size = Extent3d {
-            width: sc_desc.width,
-            height: sc_desc.height,
+            width,
+            height,
             depth_or_array_layers: 1,
         };
         let format = Self::DEPTH_FORMAT;

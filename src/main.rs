@@ -77,7 +77,8 @@ impl State {
         );
         let front_face_pass = D3Pass::new(
             &device,
-            &sc_desc,
+            sc_desc.width,
+            sc_desc.height,
             &front_face_render_buffer.format,
             true,
             &camera,
@@ -89,7 +90,8 @@ impl State {
         );
         let back_face_pass = D3Pass::new(
             &device,
-            &sc_desc,
+            sc_desc.width,
+            sc_desc.height,
             &back_face_render_buffer.format,
             false,
             &camera,
@@ -127,8 +129,10 @@ impl State {
         self.camera.aspect = self.sc_desc.width as f32 / self.sc_desc.height as f32;
 
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-        self.front_face_pass.resize(&self.device, &self.sc_desc);
-        self.back_face_pass.resize(&self.device, &self.sc_desc);
+        self.front_face_pass
+            .resize(&self.device, self.size.width, self.size.height);
+        self.back_face_pass
+            .resize(&self.device, self.size.width, self.size.height);
         self.front_face_pass
             .update_view_proj_uniform(&self.camera, &self.queue);
         self.back_face_pass

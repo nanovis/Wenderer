@@ -31,7 +31,7 @@ pub trait Geometry {
 }
 
 pub trait RenderPass {
-    fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor);
+    fn resize(&mut self, device: &Device, width: u32, height: u32);
     fn render(
         &self,
         render_into_view: &TextureView,
@@ -75,7 +75,8 @@ pub struct D3Pass {
 impl D3Pass {
     pub fn new(
         device: &Device,
-        sc_desc: &SwapChainDescriptor,
+        render_width: u32,
+        render_height: u32,
         target_format: &TextureFormat,
         render_front_face: bool,
         camera: &Camera,
@@ -90,7 +91,8 @@ impl D3Pass {
         // create geometry
         let cube = create_cube_fbo();
         // create depth texture
-        let depth_texture = Tex::create_depth_texture(&device, &sc_desc, "depth_texture");
+        let depth_texture =
+            Tex::create_depth_texture(&device, render_width, render_height, "depth_texture");
         // create uniforms
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(camera);
@@ -212,8 +214,9 @@ impl D3Pass {
 }
 
 impl RenderPass for D3Pass {
-    fn resize(&mut self, device: &Device, sc_desc: &SwapChainDescriptor) {
-        self.depth_texture = Tex::create_depth_texture(device, sc_desc, "depth texture");
+    fn resize(&mut self, device: &Device, render_width: u32, render_height: u32) {
+        self.depth_texture =
+            Tex::create_depth_texture(device, render_width, render_height, "depth texture");
     }
 
     fn render(
@@ -551,7 +554,9 @@ impl CanvasPass {
 }
 
 impl RenderPass for CanvasPass {
-    fn resize(&mut self, _device: &Device, _sc_desc: &SwapChainDescriptor) {}
+    fn resize(&mut self, device: &Device, width: u32, height: u32) {
+        todo!()
+    }
 
     fn render(
         &self,
