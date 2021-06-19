@@ -554,9 +554,7 @@ impl CanvasPass {
 }
 
 impl RenderPass for CanvasPass {
-    fn resize(&mut self, device: &Device, width: u32, height: u32) {
-        todo!()
-    }
+    fn resize(&mut self, _device: &Device, _width: u32, _height: u32) {}
 
     fn render(
         &self,
