@@ -1,7 +1,7 @@
 use futures::executor::block_on;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
-use wenderer::utils::{load_data, CameraController};
+use wenderer::utils::CameraController;
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -29,7 +29,6 @@ impl State {
     // need async because we need to await some struct creation here
     async fn new(window: &Window) -> Self {
         let size = window.inner_size();
-        let (volume_size, volume_data) = load_data();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -99,6 +98,7 @@ impl State {
             &front_face_render_buffer,
             &back_face_render_buffer,
             &device,
+            &queue,
             &sc_desc.format,
         );
         Self {
