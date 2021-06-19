@@ -1,6 +1,7 @@
 use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
 use rayon::prelude::*;
+use std::iter::FromIterator;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 pub struct CameraController {
@@ -142,7 +143,7 @@ pub fn create_cube_fbo() -> Mesh3 {
     Mesh3::new(&vertices, &indices, &attribs_3D, None)
 }
 
-pub fn load_data() -> ((usize, usize, usize), Vec<f32>) {
+pub fn load_data() -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
     let bytes = std::fs::read("./data/skewed_head.dat").expect("Error when reading file");
     let unsigned_shorts: Vec<u16> = bytes
         .chunks_exact(2)
@@ -158,8 +159,9 @@ pub fn load_data() -> ((usize, usize, usize), Vec<f32>) {
         .skip(3)
         .map(|num| ((*num << 4) as f32) / U16MAX_F)
         .collect();
+    let uint_data = Vec::from_iter(unsigned_shorts[3..].iter().cloned());
     assert_eq!(expected_data_num, data.len(), "Data size not match");
-    return ((x, y, z), data);
+    return ((x, y, z), data, uint_data);
 }
 
 #[cfg(test)]
