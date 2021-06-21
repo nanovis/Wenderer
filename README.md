@@ -13,6 +13,11 @@ cargo run --release
 ```
 The dependencies are managed automatically by `cargo` according to `Cargo.toml`.
 
+## Interactions
+For now, we have simple interactions:
+* Press `A`, `D` to rotate camera.
+* Press `W`, `S` to zoom in and out.
+
 ## TODOs
 * Multisampling
 * Ray jittering
