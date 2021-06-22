@@ -137,25 +137,28 @@ impl D3Pass {
             usage: BufferUsage::INDEX,
         });
 
+        let shader_module = device.create_shader_module(&ShaderModuleDescriptor {
+            label: Some("3D Pass shaders"),
+            source: ShaderSource::Wgsl(include_str!("./shaders/shader3d.wgsl").into()),
+            flags: ShaderFlags::all(),
+        });
+
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[&uniform_bind_group_layout],
             push_constant_ranges: &[],
         });
-        let vs_module = device.create_shader_module(&include_spirv!("shaders/shader.vert.spv"));
-        let fs_module = device.create_shader_module(&include_spirv!("shaders/shader.frag.spv"));
-
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
-                module: &vs_module,
-                entry_point: "main",
+                module: &shader_module,
+                entry_point: "vertex_shader",
                 buffers: &[cube.vertex_desc()],
             },
             fragment: Some(FragmentState {
-                module: &fs_module,
-                entry_point: "main",
+                module: &shader_module,
+                entry_point: "fragment_shader",
                 targets: &[ColorTargetState {
                     format: target_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
