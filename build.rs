@@ -36,9 +36,9 @@ impl ShaderData {
 
 fn main() -> Result<()> {
     let mut shader_paths = [
-        glob("./src/**/*.vert")?,
-        glob("./src/**/*.frag")?,
-        glob("./src/**/*.comp")?,
+        glob("./src/shaders/deprecated_glsl_shaders/*.vert")?,
+        glob("./src/shaders/deprecated_glsl_shaders/*.frag")?,
+        glob("./src/shaders/deprecated_glsl_shaders/*.comp")?,
     ];
     let shaders = shader_paths
         .iter_mut()
