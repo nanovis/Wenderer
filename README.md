@@ -18,12 +18,19 @@ For now, we have simple interactions:
 * Press `A`, `D` to rotate camera.
 * Press `W`, `S` to zoom in and out.
 
-## TODOs
+## Used WebGPU Features
+* Textures (1D, 2D, 3D)
+* Multi-pass Rendering
+* Front-face and back-face Rendering/ Depth Testing
+* Render Buffers
 * Multisampling
+* `wgsl` shaders
+
+## TODOs
 * Ray jittering
 * Better camera
-* Alternative transfer functions
-* Alternative volumes
+* Configurable transfer functions
+* Configurable volumes
 
 ## Reference and Acknowledgements
 * We thank sotrh@Github for his detailed and nicely-written [tutorial](https://sotrh.github.io/learn-wgpu/) about WebGPU and his patience on answering WebGPU questions.
