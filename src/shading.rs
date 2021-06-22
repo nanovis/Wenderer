@@ -179,7 +179,7 @@ impl Tex {
             height: dimensions.1,
             depth_or_array_layers: 1,
         };
-        let format = TextureFormat::Rgba8UnormSrgb;
+        let format = TextureFormat::Rgba16Float;
         let texture = device.create_texture(&TextureDescriptor {
             label,
             size,
