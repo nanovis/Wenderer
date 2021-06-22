@@ -25,7 +25,7 @@ impl Tex {
         queue: &Queue,
         label: &str,
     ) -> Self {
-        let format = TextureFormat::Rgba8Unorm;
+        let format = TextureFormat::Rgba8UnormSrgb;
         let length = data.len() as u32;
         let flatten_data = data
             .iter()
