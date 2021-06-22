@@ -181,13 +181,13 @@ impl Tex {
         device: &Device,
         label: Option<&str>,
         sample_cnt: NonZeroU32,
+        format: &TextureFormat,
     ) -> Self {
         let size = Extent3d {
             width: dimensions.0,
             height: dimensions.1,
             depth_or_array_layers: 1,
         };
-        let format = TextureFormat::Rgba16Float;
         let sample_count = sample_cnt.get();
         let texture = device.create_texture(&TextureDescriptor {
             label,
@@ -211,7 +211,7 @@ impl Tex {
         Self {
             texture,
             view,
-            format,
+            format: format.clone(),
             sampler,
         }
     }

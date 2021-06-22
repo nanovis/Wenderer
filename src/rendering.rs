@@ -69,6 +69,7 @@ pub struct D3Pass {
     num_depth_indices: u32,
     render_pipeline: RenderPipeline,
     depth_clear_op: LoadOp<f32>,
+    multisample_buffer: Option<Tex>,
     pub clear_color: (f64, f64, f64, f64),
     cube: Mesh3,
     sample_count: u32,
@@ -85,6 +86,18 @@ impl D3Pass {
         sample_cnt: NonZeroU32,
     ) -> Self {
         let sample_count = sample_cnt.get();
+        let enable_multisample = sample_count > 1;
+        let multisample_buffer = if enable_multisample {
+            Some(Tex::create_render_buffer(
+                (render_width, render_height),
+                device,
+                Some("Multisample Buffer"),
+                sample_cnt.clone(),
+                target_format,
+            ))
+        } else {
+            None
+        };
         // configuring back and front face rendering
         let face_render_config = if render_front_face {
             (Face::Back, CompareFunction::Less, LoadOp::Clear(1.0))
@@ -153,12 +166,12 @@ impl D3Pass {
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
+            label: Some("3DPass Render Pipeline Layout"),
             bind_group_layouts: &[&uniform_bind_group_layout],
             push_constant_ranges: &[],
         });
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
+            label: Some("3DPass Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader_module,
@@ -207,6 +220,7 @@ impl D3Pass {
             uniform_bind_group,
             uniform_buffer,
             depth_clear_op,
+            multisample_buffer,
             clear_color: (0.0, 0.0, 0.0, 1.0),
             num_depth_indices: cube.get_num_indices() as u32,
             render_pipeline,
@@ -227,13 +241,24 @@ impl D3Pass {
 
 impl RenderPass for D3Pass {
     fn resize(&mut self, device: &Device, render_width: u32, render_height: u32) {
+        let sample_cnt = NonZeroU32::new(self.sample_count).unwrap();
         self.depth_texture = Tex::create_depth_texture(
             device,
             render_width,
             render_height,
-            NonZeroU32::new(self.sample_count).unwrap(),
+            sample_cnt.clone(),
             "depth texture",
         );
+        self.multisample_buffer = match self.multisample_buffer {
+            None => None,
+            Some(ref old_buffer) => Some(Tex::create_render_buffer(
+                (render_width, render_height),
+                device,
+                Some("Multisample Buffer"),
+                sample_cnt,
+                &old_buffer.format,
+            )),
+        }
     }
 
     fn render(
@@ -242,15 +267,19 @@ impl RenderPass for D3Pass {
         external_depth_view: Option<&TextureView>,
         encoder: &mut CommandEncoder,
     ) {
+        let (view, resolve_target) = match self.multisample_buffer {
+            None => (render_into_view, None),
+            Some(ref multisample_buffer) => (&multisample_buffer.view, Some(render_into_view)),
+        };
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             // color_attachments describe where we are going to draw our color to
             color_attachments: &[RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
-                view: render_into_view,
+                view,
                 // The resolve_target is the texture that will receive the resolved output.
                 // This will be the same as `view` unless multisampling is enabled
-                resolve_target: None,
+                resolve_target,
                 ops: Operations {
                     // The load field tells wgpu how to handle colors stored from the previous frame
                     load: LoadOp::Clear(Color {
@@ -298,6 +327,7 @@ pub struct CanvasPass {
     render_pipeline: RenderPipeline,
     canvas: Rectangle,
     sample_count: u32,
+    multisample_buffer: Option<Tex>,
 }
 
 impl CanvasPass {
@@ -306,10 +336,21 @@ impl CanvasPass {
         back_face_render_buffer: &Tex,
         device: &Device,
         queue: &Queue,
-        target_format: &TextureFormat,
+        sc_desc: &SwapChainDescriptor,
         sample_cnt: NonZeroU32,
     ) -> Self {
         let sample_count = sample_cnt.get();
+        let multisample_buffer = if sample_count > 1 {
+            Some(Tex::create_render_buffer(
+                (sc_desc.width, sc_desc.height),
+                device,
+                Some("Render Pass multisample buffer"),
+                sample_cnt,
+                &sc_desc.format,
+            ))
+        } else {
+            None
+        };
         let canvas = Rectangle::new_standard_rectangle();
         let (dimensions, data, _uint_data) = load_data();
         let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
@@ -329,7 +370,7 @@ impl CanvasPass {
                         binding: 0,
                         visibility: ShaderStage::FRAGMENT,
                         ty: BindingType::Texture {
-                            multisampled: true,
+                            multisampled: false,
                             view_dimension: TextureViewDimension::D2,
                             sample_type: TextureSampleType::Float { filterable: true },
                         },
@@ -348,7 +389,7 @@ impl CanvasPass {
                         binding: 2,
                         visibility: ShaderStage::FRAGMENT,
                         ty: BindingType::Texture {
-                            multisampled: true,
+                            multisampled: false,
                             view_dimension: TextureViewDimension::D2,
                             sample_type: TextureSampleType::Float { filterable: true },
                         },
@@ -523,7 +564,7 @@ impl CanvasPass {
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
+            label: Some("Canvas Pass Render Pipeline Layout"),
             bind_group_layouts: &[
                 &face_texture_bind_group_layout,
                 &volume_bind_group_layout,
@@ -534,7 +575,7 @@ impl CanvasPass {
         });
 
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
+            label: Some("Canvas Pass Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader_module,
@@ -545,7 +586,7 @@ impl CanvasPass {
                 module: &shader_module,
                 entry_point: "fragment_shader",
                 targets: &[ColorTargetState {
-                    format: target_format.clone(),
+                    format: sc_desc.format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],
@@ -579,6 +620,7 @@ impl CanvasPass {
             canvas,
             render_pipeline,
             sample_count,
+            multisample_buffer,
         }
     }
 
@@ -623,7 +665,18 @@ impl CanvasPass {
 }
 
 impl RenderPass for CanvasPass {
-    fn resize(&mut self, _device: &Device, _width: u32, _height: u32) {}
+    fn resize(&mut self, device: &Device, width: u32, height: u32) {
+        self.multisample_buffer = match self.multisample_buffer {
+            None => None,
+            Some(ref old_buffer) => Some(Tex::create_render_buffer(
+                (width, height),
+                device,
+                Some("Render Pass multisample buffer"),
+                NonZeroU32::new(self.sample_count).unwrap(),
+                &old_buffer.format,
+            )),
+        }
+    }
 
     fn render(
         &self,
@@ -631,15 +684,19 @@ impl RenderPass for CanvasPass {
         _depth_view: Option<&TextureView>,
         encoder: &mut CommandEncoder,
     ) {
+        let (view, resolve_target) = match self.multisample_buffer {
+            None => (render_into_view, None),
+            Some(ref multisample_buffer) => (&multisample_buffer.view, Some(render_into_view)),
+        };
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             // color_attachments describe where we are going to draw our color to
             color_attachments: &[RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
-                view: render_into_view,
+                view,
                 // The resolve_target is the texture that will receive the resolved output.
                 // This will be the same as `view` unless multisampling is enabled
-                resolve_target: None,
+                resolve_target,
                 ops: Operations {
                     // The load field tells wgpu how to handle colors stored from the previous frame
                     load: LoadOp::Clear(Color {

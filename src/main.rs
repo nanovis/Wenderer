@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::CameraController;
+use wgpu::TextureFormat;
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -24,12 +25,14 @@ struct State {
     back_face_pass: D3Pass,
     back_face_render_buffer: Tex,
     canvas_pass: CanvasPass,
-    sample_count: NonZeroU32,
 }
 
 impl State {
+    /// This is 1 because render buffer textures for front-face and back-face rendering is the resolved target
+    /// not the multisampled target
+    const FACE_RENDER_BUFFER_SAMPLE_COUNT: u32 = 1;
     // need async because we need to await some struct creation here
-    async fn new(window: &Window) -> Self {
+    async fn new(window: &Window, sample_count: NonZeroU32) -> Self {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
@@ -72,12 +75,13 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
-        let sample_count = NonZeroU32::new(4).unwrap();
+        let face_buffer_format = TextureFormat::Rgba16Float; // filterable format with highest precision
         let front_face_render_buffer = Tex::create_render_buffer(
             (size.width, size.height),
             &device,
             Some("Front face render buffer texture"),
-            sample_count.clone(),
+            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            &face_buffer_format,
         );
         let front_face_pass = D3Pass::new(
             &device,
@@ -92,7 +96,8 @@ impl State {
             (size.width, size.height),
             &device,
             Some("Back face render buffer texture"),
-            sample_count.clone(),
+            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            &face_buffer_format,
         );
         let back_face_pass = D3Pass::new(
             &device,
@@ -108,8 +113,8 @@ impl State {
             &back_face_render_buffer,
             &device,
             &queue,
-            &sc_desc.format,
-            sample_count.clone(),
+            &sc_desc,
+            sample_count,
         );
         Self {
             surface,
@@ -125,7 +130,6 @@ impl State {
             front_face_render_buffer,
             back_face_render_buffer,
             canvas_pass,
-            sample_count,
         }
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
@@ -146,18 +150,22 @@ impl State {
             .update_view_proj_uniform(&self.camera, &self.queue);
         self.back_face_pass
             .update_view_proj_uniform(&self.camera, &self.queue);
+        self.canvas_pass
+            .resize(&self.device, self.size.width, self.size.height);
 
         self.front_face_render_buffer = Tex::create_render_buffer(
             (self.size.width, self.size.height),
             &self.device,
             Some("Front Face Render Buffer"),
-            self.sample_count.clone(),
+            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            &self.front_face_render_buffer.format,
         );
         self.back_face_render_buffer = Tex::create_render_buffer(
             (self.size.width, self.size.height),
             &self.device,
             Some("Back Face Render Buffer"),
-            self.sample_count.clone(),
+            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            &self.back_face_render_buffer.format,
         );
         self.canvas_pass.change_bound_face_textures(
             &self.device,
@@ -220,7 +228,8 @@ fn main() {
         .with_title("WebGPU-based DVR")
         .build(&event_loop)
         .unwrap();
-    let mut state = block_on(State::new(&window));
+    let sample_count = 4;
+    let mut state = block_on(State::new(&window, NonZeroU32::new(sample_count).unwrap()));
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
