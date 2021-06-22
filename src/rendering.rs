@@ -8,6 +8,7 @@ use crate::shading::Tex;
 use crate::utils::{create_cube_fbo, load_data, load_example_transfer_function};
 use crevice::std140::{AsStd140, Std140};
 use half::f16;
+use std::num::NonZeroU32;
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
 // That means that in normalized device coordinates the x axis and y axis are in the range of -1.0 to +1.0, and the z axis is 0.0 to +1.0.
@@ -70,6 +71,7 @@ pub struct D3Pass {
     depth_clear_op: LoadOp<f32>,
     pub clear_color: (f64, f64, f64, f64),
     cube: Mesh3,
+    sample_count: u32,
 }
 
 impl D3Pass {
@@ -80,7 +82,9 @@ impl D3Pass {
         target_format: &TextureFormat,
         render_front_face: bool,
         camera: &Camera,
+        sample_cnt: NonZeroU32,
     ) -> Self {
+        let sample_count = sample_cnt.get();
         // configuring back and front face rendering
         let face_render_config = if render_front_face {
             (Face::Back, CompareFunction::Less, LoadOp::Clear(1.0))
@@ -91,8 +95,13 @@ impl D3Pass {
         // create geometry
         let cube = create_cube_fbo();
         // create depth texture
-        let depth_texture =
-            Tex::create_depth_texture(&device, render_width, render_height, "depth_texture");
+        let depth_texture = Tex::create_depth_texture(
+            &device,
+            render_width,
+            render_height,
+            sample_cnt,
+            "depth_texture",
+        );
         // create uniforms
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(camera);
@@ -137,14 +146,14 @@ impl D3Pass {
             usage: BufferUsage::INDEX,
         });
 
+        let vs_module = device.create_shader_module(&include_spirv!("shaders/shader.vert.spv"));
+        let fs_module = device.create_shader_module(&include_spirv!("shaders/shader.frag.spv"));
+
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[&uniform_bind_group_layout],
             push_constant_ranges: &[],
         });
-        let vs_module = device.create_shader_module(&include_spirv!("shaders/shader.vert.spv"));
-        let fs_module = device.create_shader_module(&include_spirv!("shaders/shader.frag.spv"));
-
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
@@ -183,9 +192,8 @@ impl D3Pass {
                 },
             }),
             multisample: MultisampleState {
-                count: 1,                         // not using multisampling
-                mask: !0,                         // use all samples
-                alpha_to_coverage_enabled: false, // related to anti-aliasing, not using for now
+                count: sample_count,
+                ..Default::default()
             }, // the config of this struct is the same as MultisampleState::default()
         });
         Self {
@@ -200,6 +208,7 @@ impl D3Pass {
             num_depth_indices: cube.get_num_indices() as u32,
             render_pipeline,
             cube,
+            sample_count,
         }
     }
 
@@ -215,8 +224,13 @@ impl D3Pass {
 
 impl RenderPass for D3Pass {
     fn resize(&mut self, device: &Device, render_width: u32, render_height: u32) {
-        self.depth_texture =
-            Tex::create_depth_texture(device, render_width, render_height, "depth texture");
+        self.depth_texture = Tex::create_depth_texture(
+            device,
+            render_width,
+            render_height,
+            NonZeroU32::new(self.sample_count).unwrap(),
+            "depth texture",
+        );
     }
 
     fn render(
@@ -280,6 +294,7 @@ pub struct CanvasPass {
     num_depth_indices: u32,
     render_pipeline: RenderPipeline,
     canvas: Rectangle,
+    sample_count: u32,
 }
 
 impl CanvasPass {
@@ -289,7 +304,9 @@ impl CanvasPass {
         device: &Device,
         queue: &Queue,
         target_format: &TextureFormat,
+        sample_cnt: NonZeroU32,
     ) -> Self {
+        let sample_count = sample_cnt.get();
         let canvas = Rectangle::new_standard_rectangle();
         let (dimensions, data, _uint_data) = load_data();
         let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
@@ -309,7 +326,7 @@ impl CanvasPass {
                         binding: 0,
                         visibility: ShaderStage::FRAGMENT,
                         ty: BindingType::Texture {
-                            multisampled: false,
+                            multisampled: true,
                             view_dimension: TextureViewDimension::D2,
                             sample_type: TextureSampleType::Float { filterable: true },
                         },
@@ -328,7 +345,7 @@ impl CanvasPass {
                         binding: 2,
                         visibility: ShaderStage::FRAGMENT,
                         ty: BindingType::Texture {
-                            multisampled: false,
+                            multisampled: true,
                             view_dimension: TextureViewDimension::D2,
                             sample_type: TextureSampleType::Float { filterable: true },
                         },
@@ -536,7 +553,10 @@ impl CanvasPass {
                 conservative: false,
             },
             depth_stencil: None,
-            multisample: MultisampleState::default(),
+            multisample: MultisampleState {
+                count: sample_count,
+                ..Default::default()
+            },
         });
         Self {
             face_texture_bind_group_layout,
@@ -551,6 +571,7 @@ impl CanvasPass {
             num_depth_indices: canvas.get_num_indices() as u32,
             canvas,
             render_pipeline,
+            sample_count,
         }
     }
 

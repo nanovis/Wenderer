@@ -1,4 +1,5 @@
 use futures::executor::block_on;
+use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::CameraController;
@@ -23,6 +24,7 @@ struct State {
     back_face_pass: D3Pass,
     back_face_render_buffer: Tex,
     canvas_pass: CanvasPass,
+    sample_count: NonZeroU32,
 }
 
 impl State {
@@ -70,10 +72,12 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
+        let sample_count = NonZeroU32::new(4).unwrap();
         let front_face_render_buffer = Tex::create_render_buffer(
             (size.width, size.height),
             &device,
             Some("Front face render buffer texture"),
+            sample_count.clone(),
         );
         let front_face_pass = D3Pass::new(
             &device,
@@ -82,11 +86,13 @@ impl State {
             &front_face_render_buffer.format,
             true,
             &camera,
+            sample_count.clone(),
         );
         let back_face_render_buffer = Tex::create_render_buffer(
             (size.width, size.height),
             &device,
             Some("Back face render buffer texture"),
+            sample_count.clone(),
         );
         let back_face_pass = D3Pass::new(
             &device,
@@ -95,6 +101,7 @@ impl State {
             &back_face_render_buffer.format,
             false,
             &camera,
+            sample_count.clone(),
         );
         let canvas_pass = CanvasPass::new(
             &front_face_render_buffer,
@@ -102,6 +109,7 @@ impl State {
             &device,
             &queue,
             &sc_desc.format,
+            sample_count.clone(),
         );
         Self {
             surface,
@@ -117,6 +125,7 @@ impl State {
             front_face_render_buffer,
             back_face_render_buffer,
             canvas_pass,
+            sample_count,
         }
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
@@ -142,11 +151,13 @@ impl State {
             (self.size.width, self.size.height),
             &self.device,
             Some("Front Face Render Buffer"),
+            self.sample_count.clone(),
         );
         self.back_face_render_buffer = Tex::create_render_buffer(
             (self.size.width, self.size.height),
             &self.device,
             Some("Back Face Render Buffer"),
+            self.sample_count.clone(),
         );
         self.canvas_pass.change_bound_face_textures(
             &self.device,

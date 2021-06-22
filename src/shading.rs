@@ -129,18 +129,25 @@ impl Tex {
         }
     }
 
-    pub fn create_depth_texture(device: &Device, width: u32, height: u32, label: &str) -> Self {
+    pub fn create_depth_texture(
+        device: &Device,
+        width: u32,
+        height: u32,
+        sample_cnt: NonZeroU32,
+        label: &str,
+    ) -> Self {
         let size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
+        let sample_count = sample_cnt.get();
         let format = Self::DEPTH_FORMAT;
         let desc = TextureDescriptor {
             label: Some(label),
             size,
             mip_level_count: 1,
-            sample_count: 1,
+            sample_count,
             dimension: TextureDimension::D2,
             format: format.clone(),
             usage: TextureUsage::RENDER_ATTACHMENT | TextureUsage::SAMPLED,
@@ -173,6 +180,7 @@ impl Tex {
         dimensions: (u32, u32),
         device: &Device,
         label: Option<&str>,
+        sample_cnt: NonZeroU32,
     ) -> Self {
         let size = Extent3d {
             width: dimensions.0,
@@ -180,11 +188,12 @@ impl Tex {
             depth_or_array_layers: 1,
         };
         let format = TextureFormat::Rgba8UnormSrgb;
+        let sample_count = sample_cnt.get();
         let texture = device.create_texture(&TextureDescriptor {
             label,
             size,
             mip_level_count: 1,
-            sample_count: 1,
+            sample_count,
             dimension: TextureDimension::D2,
             format: format.clone(),
             usage: TextureUsage::SAMPLED | TextureUsage::RENDER_ATTACHMENT,
