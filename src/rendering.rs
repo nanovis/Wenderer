@@ -5,9 +5,8 @@ use wgpu::*;
 use crate::data::{CanvasShaderUniforms, Uniforms};
 use crate::geometries::{Mesh3, Rectangle};
 use crate::shading::Tex;
-use crate::utils::{create_cube_fbo, load_data, load_example_transfer_function};
+use crate::utils::{create_cube_fbo, load_example_transfer_function};
 use crevice::std140::{AsStd140, Std140};
-use half::f16;
 use std::num::NonZeroU32;
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
@@ -52,10 +51,10 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
+    pub fn build_view_projection_matrix(&self, model_transformation: Matrix4<f32>) -> Matrix4<f32> {
         let view = Matrix4::look_at_rh(self.eye, self.center, self.up);
         let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return proj * view;
+        return proj * view * model_transformation;
     }
 }
 
@@ -84,6 +83,7 @@ impl D3Pass {
         render_front_face: bool,
         camera: &Camera,
         sample_cnt: NonZeroU32,
+        cube_transformation: Matrix4<f32>,
     ) -> Self {
         let sample_count = sample_cnt.get();
         let enable_multisample = sample_count > 1;
@@ -117,7 +117,7 @@ impl D3Pass {
         );
         // create uniforms
         let mut uniforms = Uniforms::new();
-        uniforms.update_view_proj(camera);
+        uniforms.update_model_view_proj(camera, cube_transformation);
         let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: uniforms.as_std140().as_bytes(),
@@ -229,8 +229,14 @@ impl D3Pass {
         }
     }
 
-    pub fn update_view_proj_uniform(&mut self, camera: &Camera, queue: &Queue) {
-        self.uniforms.update_view_proj(camera);
+    pub fn update_model_view_proj_uniform(
+        &mut self,
+        model_transformation: Matrix4<f32>,
+        camera: &Camera,
+        queue: &Queue,
+    ) {
+        self.uniforms
+            .update_model_view_proj(camera, model_transformation);
         queue.write_buffer(
             &self.uniform_buffer,
             0,
@@ -334,6 +340,7 @@ impl CanvasPass {
     pub fn new(
         front_face_render_buffer: &Tex,
         back_face_render_buffer: &Tex,
+        volume_texture: &Tex,
         device: &Device,
         queue: &Queue,
         sc_desc: &SwapChainDescriptor,
@@ -352,14 +359,6 @@ impl CanvasPass {
             None
         };
         let canvas = Rectangle::new_standard_rectangle();
-        let (dimensions, data, _uint_data) = load_data();
-        let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
-        let extent = Extent3d {
-            width: dimensions.0 as u32,
-            height: dimensions.1 as u32,
-            depth_or_array_layers: dimensions.2 as u32,
-        };
-        let d3tex = Tex::create_3d_texture_red_f16(&extent, &data_f16, device, queue, "Volume");
         // A BindGroup describes a set of resources and how they can be accessed by a shader.
         // We create a BindGroup using a BindGroupLayout.
         let face_texture_bind_group_layout =
@@ -462,11 +461,11 @@ impl CanvasPass {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&d3tex.view),
+                    resource: BindingResource::TextureView(&volume_texture.view),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(&d3tex.sampler),
+                    resource: BindingResource::Sampler(&volume_texture.sampler),
                 },
             ],
         });

@@ -1,9 +1,11 @@
+use cgmath::Matrix4;
 use futures::executor::block_on;
+use half::f16;
 use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
-use wenderer::utils::CameraController;
-use wgpu::TextureFormat;
+use wenderer::utils::{load_data, CameraController};
+use wgpu::{Extent3d, TextureFormat};
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -20,6 +22,7 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
+    cube_scaling: Matrix4<f32>,
     front_face_pass: D3Pass,
     front_face_render_buffer: Tex,
     back_face_pass: D3Pass,
@@ -75,6 +78,27 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
+        // load volume into textures
+        let ((x, y, z), data, _uint_data) = load_data();
+        let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
+        let extent = Extent3d {
+            width: x as u32,
+            height: y as u32,
+            depth_or_array_layers: z as u32,
+        };
+        // prepare volume cube scaling for correct shape
+        let mut dims = vec![x, y, z];
+        dims.sort();
+        let mid_val = *dims.get(1).unwrap() as f32;
+        let volume_texture =
+            Tex::create_3d_texture_red_f16(&extent, &data_f16, &device, &queue, "Volume");
+        let cube_scaling = Matrix4::from_nonuniform_scale(
+            x as f32 / mid_val,
+            y as f32 / mid_val,
+            z as f32 / mid_val,
+        );
+
+        // prepare front-face and back-face passes
         let face_buffer_format = TextureFormat::Rgba16Float; // filterable format with highest precision
         let front_face_render_buffer = Tex::create_render_buffer(
             (size.width, size.height),
@@ -91,6 +115,7 @@ impl State {
             true,
             &camera,
             sample_count.clone(),
+            cube_scaling.clone(),
         );
         let back_face_render_buffer = Tex::create_render_buffer(
             (size.width, size.height),
@@ -107,10 +132,12 @@ impl State {
             false,
             &camera,
             sample_count.clone(),
+            cube_scaling.clone(),
         );
         let canvas_pass = CanvasPass::new(
             &front_face_render_buffer,
             &back_face_render_buffer,
+            &volume_texture,
             &device,
             &queue,
             &sc_desc,
@@ -125,6 +152,7 @@ impl State {
             size,
             camera,
             camera_controller: CameraController::new(0.2),
+            cube_scaling,
             front_face_pass,
             back_face_pass,
             front_face_render_buffer,
@@ -146,10 +174,16 @@ impl State {
             .resize(&self.device, self.size.width, self.size.height);
         self.back_face_pass
             .resize(&self.device, self.size.width, self.size.height);
-        self.front_face_pass
-            .update_view_proj_uniform(&self.camera, &self.queue);
-        self.back_face_pass
-            .update_view_proj_uniform(&self.camera, &self.queue);
+        self.front_face_pass.update_model_view_proj_uniform(
+            self.cube_scaling.clone(),
+            &self.camera,
+            &self.queue,
+        );
+        self.back_face_pass.update_model_view_proj_uniform(
+            self.cube_scaling.clone(),
+            &self.camera,
+            &self.queue,
+        );
         self.canvas_pass
             .resize(&self.device, self.size.width, self.size.height);
 
@@ -194,10 +228,16 @@ impl State {
     }
     fn update(&mut self) {
         self.camera_controller.update_camera(&mut self.camera);
-        self.front_face_pass
-            .update_view_proj_uniform(&self.camera, &self.queue);
-        self.back_face_pass
-            .update_view_proj_uniform(&self.camera, &self.queue);
+        self.front_face_pass.update_model_view_proj_uniform(
+            self.cube_scaling.clone(),
+            &self.camera,
+            &self.queue,
+        );
+        self.back_face_pass.update_model_view_proj_uniform(
+            self.cube_scaling.clone(),
+            &self.camera,
+            &self.queue,
+        );
     }
     // We also need to create a CommandEncoder to create the actual commands to send to the gpu.
     // Most modern graphics frameworks expect commands to be stored in a command buffer before being sent to the gpu.

@@ -144,7 +144,7 @@ pub fn create_cube_fbo() -> Mesh3 {
 }
 
 pub fn load_data() -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
-    let bytes = std::fs::read("./data/skewed_head.dat").expect("Error when reading file");
+    let bytes = std::fs::read("./data/stagbeetle277x277x164.dat").expect("Error when reading file");
     let unsigned_shorts: Vec<u16> = bytes
         .chunks_exact(2)
         .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))

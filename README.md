@@ -35,4 +35,19 @@ For now, we have simple interactions:
 ## Reference and Acknowledgements
 * We thank sotrh@Github for his detailed and nicely-written [tutorial](https://sotrh.github.io/learn-wgpu/) about WebGPU and his patience on answering WebGPU questions.
 * We thank kvark@Github for helping resolve a key issue in our implementation in the [Github Discussion in wgpu](https://github.com/gfx-rs/wgpu/discussions/1491).
-* For the `skewed_head.dat`, we are finding the reference to it, so please do **not** distribute it for now.
+* For the stag beetle dataset, please see the below reference
+    ```
+    @dataset{dataset-stagbeetle,
+      title =      "Stag beetle",
+      author =     "Meister Eduard Gr\"{o}ller and Georg Glaeser and Johannes
+                   Kastner",
+      year =       "2005",
+      abstract =   "The stag beetle from Georg Glaeser, Vienna University of
+                   Applied Arts, Austria, was scanned with an industrial CT by
+                   Johannes Kastner, Wels  College of Engineering, Austria, and
+                   Meister Eduard Gr\"{o}ller, Vienna University of Technology,
+                   Austria.",
+      keywords =   "volume, data set",
+      URL =        "https://www.cg.tuwien.ac.at/research/publications/2005/dataset-stagbeetle/",
+    }
+    ```

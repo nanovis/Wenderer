@@ -1,6 +1,6 @@
 use crate::rendering::Camera;
 use bytemuck::{Pod, Zeroable};
-use cgmath::SquareMatrix;
+use cgmath::{Matrix4, SquareMatrix};
 use crevice::std140::AsStd140;
 use mint::ColumnMatrix4;
 
@@ -21,17 +21,19 @@ pub struct Vertex3 {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, AsStd140)]
 pub struct Uniforms {
-    view_proj: ColumnMatrix4<f32>,
+    model_view_proj: ColumnMatrix4<f32>,
 }
 
 impl Uniforms {
     pub fn new() -> Self {
         Self {
-            view_proj: cgmath::Matrix4::identity().into(),
+            model_view_proj: cgmath::Matrix4::identity().into(),
         }
     }
-    pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+    pub fn update_model_view_proj(&mut self, camera: &Camera, model_transformation: Matrix4<f32>) {
+        self.model_view_proj = camera
+            .build_view_projection_matrix(model_transformation)
+            .into();
     }
 }
 
