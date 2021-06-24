@@ -168,7 +168,7 @@ pub fn load_example_transfer_function() -> Vec<cgmath::Vector4<u8>> {
     #[rustfmt::skip]
     static TF:[f32;48] = [
         0.0, 0.0, 0.0, 0.0,
-        0.0, 0.5, 0.5, 0.0,
+        0.0, 0.5, 0.5, 0.01,
         0.0, 0.5, 0.5, 0.01,
         0.0, 0.5, 0.5, 0.0,
         0.5, 0.5, 0.0, 0.0,
