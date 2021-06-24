@@ -1,10 +1,11 @@
 use cgmath::Matrix4;
 use futures::executor::block_on;
 use half::f16;
+use rayon::prelude::*;
 use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
-use wenderer::utils::{load_data, CameraController};
+use wenderer::utils::{load_volume_data, CameraController};
 use wgpu::{Extent3d, TextureFormat};
 use winit::dpi::PhysicalSize;
 use winit::{
@@ -79,8 +80,8 @@ impl State {
             zfar: 100.0,
         };
         // load volume into textures
-        let ((x, y, z), data, _uint_data) = load_data();
-        let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
+        let ((x, y, z), data, _uint_data) = load_volume_data("./data/stagbeetle277x277x164.dat");
+        let data_f16: Vec<f16> = data.par_iter().map(|x| f16::from_f32(*x)).collect();
         let extent = Extent3d {
             width: x as u32,
             height: y as u32,

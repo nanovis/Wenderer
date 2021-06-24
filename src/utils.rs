@@ -2,6 +2,7 @@ use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
 use rayon::prelude::*;
 use std::iter::FromIterator;
+use std::path::Path;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 pub struct CameraController {
@@ -143,10 +144,27 @@ pub fn create_cube_fbo() -> Mesh3 {
     Mesh3::new(&vertices, &indices, &attribs_3d, None)
 }
 
-pub fn load_data() -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
-    let bytes = std::fs::read("./data/stagbeetle277x277x164.dat").expect("Error when reading file");
+///
+/// Reads raw 16-bit data into arrays
+///
+/// First 3 2-byte unsigned integers should be dimensions
+///
+/// Following 2-byte integers should only use lower 12bits
+///
+/// # Returns
+/// * dimensions
+/// * normalized(data << 4) float array
+/// * original u16 data array
+///
+/// # Endian
+/// Native endian of your machine, change `u16::from_ne_bytes` to `u16::from_be_bytes` or `u16::from_le_bytes` if necessary
+///
+pub fn load_volume_data<P: AsRef<Path>>(
+    data_path: P,
+) -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
+    let bytes = std::fs::read(data_path).expect("Error when reading file");
     let unsigned_shorts: Vec<u16> = bytes
-        .chunks_exact(2)
+        .par_chunks_exact(2)
         .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
         .collect();
     let x = unsigned_shorts.get(0).unwrap().clone() as usize;
@@ -193,6 +211,6 @@ mod util_tests {
     use super::*;
     #[test]
     fn test_load_data() {
-        let (_, _data) = load_data();
+        let (_, _, _data) = load_volume_data("./data/stagbeetle277x277x164.dat");
     }
 }
