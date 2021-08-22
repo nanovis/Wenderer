@@ -3,6 +3,7 @@ name = "wenderer"
 version = "0.1.0"
 authors = ["feng liang <feng.liang@kaust.edu.sa>"]
 edition = "2018"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,7 +13,7 @@ winit = "0.25"
 cgmath = { version = "0.18", features = ["swizzle", "mint"] }
 env_logger = "0.7"
 log = "0.4"
-wgpu = "0.9"
+wgpu = "0.10"
 crevice = "0.6.0"
 mint = "0.5.6"
 futures = "0.3"

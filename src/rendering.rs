@@ -121,13 +121,13 @@ impl D3Pass {
         let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: uniforms.as_std140().as_bytes(),
-            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 entries: &[BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::VERTEX,
+                    visibility: ShaderStages::VERTEX,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -150,19 +150,18 @@ impl D3Pass {
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: cube.get_vertex_raw(),
-            usage: BufferUsage::VERTEX,
+            usage: BufferUsages::VERTEX,
         });
         // create index buffer
         let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: cube.get_index_raw(),
-            usage: BufferUsage::INDEX,
+            usage: BufferUsages::INDEX,
         });
 
         let shader_module = device.create_shader_module(&ShaderModuleDescriptor {
             label: Some("3D Pass shaders"),
             source: ShaderSource::Wgsl(include_str!("./shaders/shader3d.wgsl").into()),
-            flags: ShaderFlags::all(),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -184,7 +183,7 @@ impl D3Pass {
                 targets: &[ColorTargetState {
                     format: target_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
-                    write_mask: ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
+                    write_mask: ColorWrites::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],
             }),
             primitive: PrimitiveState {
@@ -343,17 +342,18 @@ impl CanvasPass {
         volume_texture: &Tex,
         device: &Device,
         queue: &Queue,
-        sc_desc: &SwapChainDescriptor,
+        resolution: (u32, u32),
+        tex_format: &TextureFormat,
         sample_cnt: NonZeroU32,
     ) -> Self {
         let sample_count = sample_cnt.get();
         let multisample_buffer = if sample_count > 1 {
             Some(Tex::create_render_buffer(
-                (sc_desc.width, sc_desc.height),
+                resolution,
                 device,
                 Some("Render Pass multisample buffer"),
                 sample_cnt,
-                &sc_desc.format,
+                tex_format,
             ))
         } else {
             None
@@ -367,7 +367,7 @@ impl CanvasPass {
                 entries: &[
                     BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStage::FRAGMENT,
+                        visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Texture {
                             multisampled: false,
                             view_dimension: TextureViewDimension::D2,
@@ -377,7 +377,7 @@ impl CanvasPass {
                     },
                     BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: ShaderStage::FRAGMENT,
+                        visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Sampler {
                             comparison: false, // mostly for depth texture
                             filtering: true,
@@ -386,7 +386,7 @@ impl CanvasPass {
                     },
                     BindGroupLayoutEntry {
                         binding: 2,
-                        visibility: ShaderStage::FRAGMENT,
+                        visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Texture {
                             multisampled: false,
                             view_dimension: TextureViewDimension::D2,
@@ -396,7 +396,7 @@ impl CanvasPass {
                     },
                     BindGroupLayoutEntry {
                         binding: 3,
-                        visibility: ShaderStage::FRAGMENT,
+                        visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Sampler {
                             comparison: false, // mostly for depth texture
                             filtering: true,
@@ -436,7 +436,7 @@ impl CanvasPass {
                 entries: &[
                     BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStage::FRAGMENT,
+                        visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Texture {
                             multisampled: false,
                             view_dimension: TextureViewDimension::D3,
@@ -446,7 +446,7 @@ impl CanvasPass {
                     },
                     BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: ShaderStage::FRAGMENT,
+                        visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Sampler {
                             comparison: false, // mostly for depth texture
                             filtering: true,
@@ -481,7 +481,7 @@ impl CanvasPass {
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::FRAGMENT,
+                    visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Texture {
                         multisampled: false,
                         view_dimension: TextureViewDimension::D1,
@@ -491,7 +491,7 @@ impl CanvasPass {
                 },
                 BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: ShaderStage::FRAGMENT,
+                    visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Sampler {
                         comparison: false, // mostly for depth texture
                         filtering: true,
@@ -519,14 +519,14 @@ impl CanvasPass {
         let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: uniforms.as_std140().as_bytes(),
-            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("Uniform Bind Group Layout"),
                 entries: &[BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::FRAGMENT,
+                    visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -547,19 +547,18 @@ impl CanvasPass {
         let vertex_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: canvas.get_vertex_raw(),
-            usage: BufferUsage::VERTEX,
+            usage: BufferUsages::VERTEX,
         });
         // create index buffer
         let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: canvas.get_index_raw(),
-            usage: BufferUsage::INDEX,
+            usage: BufferUsages::INDEX,
         });
 
         let shader_module = device.create_shader_module(&ShaderModuleDescriptor {
             label: Some("Canvas Pass Shaders"),
             source: ShaderSource::Wgsl(include_str!("./shaders/canvas_shader.wgsl").into()),
-            flags: ShaderFlags::all(),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -585,9 +584,9 @@ impl CanvasPass {
                 module: &shader_module,
                 entry_point: "fragment_shader",
                 targets: &[ColorTargetState {
-                    format: sc_desc.format.clone(),
+                    format: tex_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
-                    write_mask: ColorWrite::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
+                    write_mask: ColorWrites::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 }],
             }),
             primitive: PrimitiveState {

@@ -43,7 +43,7 @@ impl Tex {
             sample_count: 1,
             dimension: TextureDimension::D1,
             format,
-            usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
         };
         let texture = device.create_texture(&desc);
         queue.write_texture(
@@ -51,6 +51,7 @@ impl Tex {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
+                aspect: Default::default()
             },
             bytemuck::cast_slice(flatten_data.as_slice()),
             ImageDataLayout {
@@ -93,7 +94,7 @@ impl Tex {
             sample_count: 1,
             dimension: TextureDimension::D3,
             format,
-            usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
         };
         let texture = device.create_texture(&desc);
         queue.write_texture(
@@ -101,6 +102,7 @@ impl Tex {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
+                aspect: Default::default()
             },
             bytemuck::cast_slice(data.as_slice()),
             ImageDataLayout {
@@ -150,7 +152,7 @@ impl Tex {
             sample_count,
             dimension: TextureDimension::D2,
             format: format.clone(),
-            usage: TextureUsage::RENDER_ATTACHMENT | TextureUsage::SAMPLED,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
         };
         let texture = device.create_texture(&desc);
         let view = texture.create_view(&TextureViewDescriptor::default());
@@ -196,7 +198,7 @@ impl Tex {
             sample_count,
             dimension: TextureDimension::D2,
             format: format.clone(),
-            usage: TextureUsage::SAMPLED | TextureUsage::RENDER_ATTACHMENT,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
         });
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -238,7 +240,7 @@ impl Tex {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: format.clone(),
-            usage: TextureUsage::SAMPLED | TextureUsage::COPY_DST,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
         });
 
         queue.write_texture(
@@ -246,6 +248,7 @@ impl Tex {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
+                aspect: Default::default()
             },
             rgba,
             ImageDataLayout {

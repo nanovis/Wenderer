@@ -6,7 +6,7 @@ use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{load_volume_data, CameraController};
-use wgpu::{Extent3d, TextureFormat};
+use wgpu::{Extent3d, TextureFormat, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -16,10 +16,10 @@ use winit::{
 
 struct State {
     surface: wgpu::Surface,
+    surface_configs: SurfaceConfiguration,
+    surface_view_desc: TextureViewDescriptor<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    sc_desc: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
     size: winit::dpi::PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
@@ -40,7 +40,7 @@ impl State {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
         // need adapter to create the device and queue
         let adapter = instance
@@ -61,14 +61,25 @@ impl State {
             )
             .await
             .unwrap();
-        let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT, //RENDER_ATTACHMENT specifies that the textures will be used to write to the screen
-            format: adapter.get_swap_chain_preferred_format(&surface).unwrap(),
+        let preferred_format = surface.get_preferred_format(&adapter).unwrap();
+        let surface_configs = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: preferred_format,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
         };
-        let swap_chain = device.create_swap_chain(&surface, &sc_desc);
+        surface.configure(&device, &surface_configs);
+        let surface_view_desc = TextureViewDescriptor {
+            label: Some("Render Texture View"),
+            format: Some(surface_configs.format),
+            dimension: Some(TextureViewDimension::D2),
+            aspect: Default::default(),
+            base_mip_level: 0,
+            mip_level_count: None,
+            base_array_layer: 0,
+            array_layer_count: None,
+        };
         // rendering configurations
         let camera = Camera {
             eye: (0.0, -2.5, 1.0).into(),
@@ -141,15 +152,16 @@ impl State {
             &volume_texture,
             &device,
             &queue,
-            &sc_desc,
+            (size.width, size.height),
+            &preferred_format,
             sample_count,
         );
         Self {
             surface,
+            surface_configs,
+            surface_view_desc,
             device,
             queue,
-            sc_desc,
-            swap_chain,
             size,
             camera,
             camera_controller: CameraController::new(0.2),
@@ -165,12 +177,11 @@ impl State {
     // That's the reason we stored the physical size and the sc_desc used to create the swap chain.
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = new_size;
-        self.sc_desc.width = new_size.width;
-        self.sc_desc.height = new_size.height;
+        self.surface_configs.width = new_size.width;
+        self.surface_configs.height = new_size.height;
 
         self.camera.aspect = self.size.width as f32 / self.size.height as f32;
-
-        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+        self.surface.configure(&self.device, &self.surface_configs);
         self.front_face_pass
             .resize(&self.device, self.size.width, self.size.height);
         self.back_face_pass
@@ -243,8 +254,9 @@ impl State {
     // We also need to create a CommandEncoder to create the actual commands to send to the gpu.
     // Most modern graphics frameworks expect commands to be stored in a command buffer before being sent to the gpu.
     // The encoder builds a command buffer that we can then send to the gpu.
-    fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
-        let frame = self.swap_chain.get_current_frame()?.output;
+    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        let frame = self.surface.get_current_frame()?.output;
+        let frame_tex_view = frame.texture.create_view(&self.surface_view_desc);
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -255,7 +267,7 @@ impl State {
             .render(&self.front_face_render_buffer.view, None, &mut encoder);
         self.back_face_pass
             .render(&self.back_face_render_buffer.view, None, &mut encoder);
-        self.canvas_pass.render(&frame.view, None, &mut encoder);
+        self.canvas_pass.render(&frame_tex_view, None, &mut encoder);
         self.queue.submit(std::iter::once(encoder.finish()));
         Ok(())
     }
@@ -302,8 +314,8 @@ fn main() {
             match state.render() {
                 Ok(_) => {}
                 // Recreate the swap_chain if lost
-                Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
-                Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                 Err(e) => eprintln!("Some unhandled error {:?}", e),
             }
         }

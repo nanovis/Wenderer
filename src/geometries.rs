@@ -4,12 +4,12 @@ use cgmath::{Matrix4, Vector2, Vector3, Vector4};
 use rayon::prelude::*;
 use std::mem::size_of;
 use wgpu::{
-    BufferAddress, IndexFormat, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat,
+    BufferAddress, IndexFormat, VertexStepMode, VertexAttribute, VertexBufferLayout, VertexFormat,
 };
 
 const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = VertexBufferLayout {
     array_stride: size_of::<Vertex2>() as BufferAddress,
-    step_mode: InputStepMode::Vertex,
+    step_mode: VertexStepMode::Vertex,
     attributes: &[
         VertexAttribute {
             offset: 0,
@@ -182,7 +182,7 @@ impl Geometry for Mesh3 {
     fn vertex_desc(&self) -> VertexBufferLayout {
         VertexBufferLayout {
             array_stride: size_of::<Vertex3>() as BufferAddress,
-            step_mode: InputStepMode::Vertex,
+            step_mode: VertexStepMode::Vertex,
             attributes: &[
                 VertexAttribute {
                     offset: 0,
