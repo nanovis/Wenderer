@@ -1,30 +1,25 @@
 use cgmath::Matrix4;
-use console_error_panic_hook;
 use futures::executor::block_on;
 use half::f16;
 use rayon::prelude::*;
 use std::num::NonZeroU32;
-use std::panic;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{load_volume_data, CameraController};
-use wgpu::{
-    Extent3d, SurfaceConfiguration, TextureFormat, TextureUsages, TextureViewDescriptor,
-    TextureViewDimension,
-};
-use winit::dpi::PhysicalSize;
+use wgpu::*;
 use winit::{
+    dpi::PhysicalSize,
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
 
 struct State {
-    surface: wgpu::Surface,
+    surface: Surface,
     surface_configs: SurfaceConfiguration,
     surface_view_desc: TextureViewDescriptor<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
+    device: Device,
+    queue: Queue,
     size: winit::dpi::PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
@@ -45,21 +40,21 @@ impl State {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+        let instance = Instance::new(Backends::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
         // need adapter to create the device and queue
         let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: PowerPreference::default(),
                 compatible_surface: Some(&surface),
             })
             .await
             .unwrap();
         let (device, queue) = adapter
             .request_device(
-                &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(), //The device you have limits the features you can use
-                    limits: wgpu::Limits::default(), //The limits field describes the limit of certain types of resource we can create
+                &DeviceDescriptor {
+                    features: Features::empty(), //The device you have limits the features you can use
+                    limits: Limits::default(), //The limits field describes the limit of certain types of resource we can create
                     label: None,
                 },
                 None,
@@ -72,7 +67,7 @@ impl State {
             format: preferred_format,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: PresentMode::Fifo,
         };
         surface.configure(&device, &surface_configs);
         let surface_view_desc = TextureViewDescriptor {
@@ -259,12 +254,12 @@ impl State {
     // We also need to create a CommandEncoder to create the actual commands to send to the gpu.
     // Most modern graphics frameworks expect commands to be stored in a command buffer before being sent to the gpu.
     // The encoder builds a command buffer that we can then send to the gpu.
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    fn render(&mut self) -> Result<(), SurfaceError> {
         let frame = self.surface.get_current_frame()?.output;
         let frame_tex_view = frame.texture.create_view(&self.surface_view_desc);
         let mut encoder = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
 
@@ -311,8 +306,8 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
             match state.render() {
                 Ok(_) => {}
                 // Recreate the swap_chain if lost
-                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                Err(SurfaceError::Lost) => state.resize(state.size),
+                Err(SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                 Err(e) => eprintln!("Some unhandled error {:?}", e),
             }
         }
@@ -334,10 +329,13 @@ fn main() {
         .unwrap();
     #[cfg(not(target_arch = "wasm32"))]
     {
-        unimplemented!("not implemented in this branch, since this branch is targeted to wasm")
+        env_logger::init();
+        block_on(run(event_loop, window));
     }
     #[cfg(target_arch = "wasm32")]
     {
+        use console_error_panic_hook;
+        use std::panic;
         panic::set_hook(Box::new(console_error_panic_hook::hook));
         console_log::init().expect("Could not initialize logger");
         use winit::platform::web::WindowExtWebSys;
