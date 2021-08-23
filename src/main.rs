@@ -1,8 +1,10 @@
 use cgmath::Matrix4;
+use console_error_panic_hook;
 use futures::executor::block_on;
 use half::f16;
 use rayon::prelude::*;
 use std::num::NonZeroU32;
+use std::panic;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{load_volume_data, CameraController};
@@ -275,6 +277,7 @@ impl State {
 
 fn main() {
     env_logger::init();
+    panic::set_hook(Box::new(console_error_panic_hook::hook));
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(1000, 1000))
