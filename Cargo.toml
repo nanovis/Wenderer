@@ -15,6 +15,9 @@ cgmath = { version = "0.18", features = ["swizzle", "mint"] }
 env_logger = "0.7"
 log = "0.4"
 wgpu = "0.10"
+console_log = "0.2.0"
+wasm-bindgen-futures = "0.4.26"
+web-sys = {version = "0.3.51"} # fixme: when wgpu fix dependency, remember to fix this to 0.3.53
 crevice = "0.6.0"
 mint = "0.5.6"
 futures = "0.3"
