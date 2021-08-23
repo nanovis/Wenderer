@@ -159,6 +159,44 @@ pub fn create_cube_fbo() -> Mesh3 {
 /// # Endian
 /// Native endian of your machine, change `u16::from_ne_bytes` to `u16::from_be_bytes` or `u16::from_le_bytes` if necessary
 ///
+#[cfg(target_arch = "wasm32")]
+pub fn load_volume_data<P: AsRef<Path>>(_: P) -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
+    let bytes = include_bytes!("../data/stagbeetle277x277x164.dat");
+    let unsigned_shorts: Vec<u16> = bytes
+        .par_chunks_exact(2)
+        .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
+        .collect();
+    let x = unsigned_shorts.get(0).unwrap().clone() as usize;
+    let y = unsigned_shorts.get(1).unwrap().clone() as usize;
+    let z = unsigned_shorts.get(2).unwrap().clone() as usize;
+    let expected_data_num = x * y * z;
+    const U16MAX_F: f32 = u16::MAX as f32;
+    let data: Vec<f32> = unsigned_shorts
+        .par_iter()
+        .skip(3)
+        .map(|num| ((*num << 4) as f32) / U16MAX_F)
+        .collect();
+    let uint_data = Vec::from_iter(unsigned_shorts[3..].iter().cloned());
+    assert_eq!(expected_data_num, data.len(), "Data size not match");
+    return ((x, y, z), data, uint_data);
+}
+
+///
+/// Reads raw 16-bit data into arrays
+///
+/// First 3 2-byte unsigned integers should be dimensions
+///
+/// Following 2-byte integers should only use lower 12bits
+///
+/// # Returns
+/// * dimensions
+/// * normalized(data << 4) float array
+/// * original u16 data array
+///
+/// # Endian
+/// Native endian of your machine, change `u16::from_ne_bytes` to `u16::from_be_bytes` or `u16::from_le_bytes` if necessary
+///
+#[cfg(not(target_arch = "wasm32"))]
 pub fn load_volume_data<P: AsRef<Path>>(
     data_path: P,
 ) -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
