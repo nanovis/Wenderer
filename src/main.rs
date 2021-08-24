@@ -90,7 +90,7 @@ impl State {
             zfar: 100.0,
         };
         // load volume into textures
-        let ((x, y, z), data, _uint_data) = load_volume_data("./data/stagbeetle277x277x164.dat");
+        let ((x, y, z), data) = load_volume_data("./data/stagbeetle277x277x164.dat");
         let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
         let extent = Extent3d {
             width: x as u32,
@@ -323,25 +323,25 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = winit::window::Window::new(&event_loop).unwrap();
     #[cfg(not(target_arch = "wasm32"))]
-    {
-        env_logger::init();
-        block_on(run(event_loop, window));
-    }
+        {
+            env_logger::init();
+            block_on(run(event_loop, window));
+        }
     #[cfg(target_arch = "wasm32")]
-    {
-        use console_error_panic_hook;
-        use std::panic;
-        panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init().expect("Could not initialize logger");
-        use winit::platform::web::WindowExtWebSys;
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| doc.body())
-            .and_then(|body| {
-                body.append_child(&web_sys::Element::from(window.canvas()))
-                    .ok()
-            })
-            .expect("Could not append canvas to document body");
-        wasm_bindgen_futures::spawn_local(run(event_loop, window));
-    }
+        {
+            use console_error_panic_hook;
+            use std::panic;
+            panic::set_hook(Box::new(console_error_panic_hook::hook));
+            console_log::init().expect("Could not initialize logger");
+            use winit::platform::web::WindowExtWebSys;
+            web_sys::window()
+                .and_then(|win| win.document())
+                .and_then(|doc| doc.body())
+                .and_then(|body| {
+                    body.append_child(&web_sys::Element::from(window.canvas()))
+                        .ok()
+                })
+                .expect("Could not append canvas to document body");
+            wasm_bindgen_futures::spawn_local(run(event_loop, window));
+        }
 }

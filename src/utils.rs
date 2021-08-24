@@ -32,11 +32,11 @@ impl CameraController {
         match event {
             WindowEvent::KeyboardInput {
                 input:
-                    KeyboardInput {
-                        state,
-                        virtual_keycode: Some(keycode),
-                        ..
-                    },
+                KeyboardInput {
+                    state,
+                    virtual_keycode: Some(keycode),
+                    ..
+                },
                 ..
             } => {
                 let is_pressed = *state == ElementState::Pressed; // when the key is released, *state will be Release and thus reset the corresponding state
@@ -133,13 +133,13 @@ pub fn create_cube_fbo() -> Mesh3 {
         V3::new(0.0, side, 0.0),
     ];
     #[rustfmt::skip]
-    let indices = vec![
+        let indices = vec![
         0, 1, 3, 3, 1, 2,
         2, 1, 5, 2, 5, 6,
         3, 2, 7, 7, 2, 6,
         4, 0, 3, 4, 3, 7,
         4, 1, 0, 4, 5, 1,
-        7, 6, 5, 7, 5, 4
+        7, 6, 5, 7, 5, 4,
     ];
     Mesh3::new(&vertices, &indices, &attribs_3d, None)
 }
@@ -160,25 +160,20 @@ pub fn create_cube_fbo() -> Mesh3 {
 /// Native endian of your machine, change `u16::from_ne_bytes` to `u16::from_be_bytes` or `u16::from_le_bytes` if necessary
 ///
 #[cfg(target_arch = "wasm32")]
-pub fn load_volume_data<P: AsRef<Path>>(_: P) -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
+pub fn load_volume_data<P: AsRef<Path>>(_: P) -> ((usize, usize, usize), Vec<f32>) {
     let bytes = include_bytes!("../data/stagbeetle277x277x164.dat");
-    let unsigned_shorts: Vec<u16> = bytes
-        .chunks_exact(2)
-        .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
-        .collect();
-    let x = unsigned_shorts.get(0).unwrap().clone() as usize;
-    let y = unsigned_shorts.get(1).unwrap().clone() as usize;
-    let z = unsigned_shorts.get(2).unwrap().clone() as usize;
+    let unsigned_shorts: &[u16] = bytemuck::cast_slice(bytes);
+    let x = unsigned_shorts[0] as usize;
+    let y = unsigned_shorts[1] as usize;
+    let z = unsigned_shorts[2] as usize;
     let expected_data_num = x * y * z;
     const U16MAX_F: f32 = u16::MAX as f32;
-    let data: Vec<f32> = unsigned_shorts
+    let data: Vec<f32> = unsigned_shorts[3..]
         .iter()
-        .skip(3)
         .map(|num| ((*num << 4) as f32) / U16MAX_F)
         .collect();
-    let uint_data = Vec::from_iter(unsigned_shorts[3..].iter().cloned());
     assert_eq!(expected_data_num, data.len(), "Data size not match");
-    return ((x, y, z), data, uint_data);
+    return ((x, y, z), data);
 }
 
 ///
@@ -197,32 +192,25 @@ pub fn load_volume_data<P: AsRef<Path>>(_: P) -> ((usize, usize, usize), Vec<f32
 /// Native endian of your machine, change `u16::from_ne_bytes` to `u16::from_be_bytes` or `u16::from_le_bytes` if necessary
 ///
 #[cfg(not(target_arch = "wasm32"))]
-pub fn load_volume_data<P: AsRef<Path>>(
-    data_path: P,
-) -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
+pub fn load_volume_data<P: AsRef<Path>>(data_path: P) -> ((usize, usize, usize), Vec<f32>) {
     let bytes = std::fs::read(data_path).expect("Error when reading file");
-    let unsigned_shorts: Vec<u16> = bytes
-        .par_chunks_exact(2)
-        .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
-        .collect();
-    let x = unsigned_shorts.get(0).unwrap().clone() as usize;
-    let y = unsigned_shorts.get(1).unwrap().clone() as usize;
-    let z = unsigned_shorts.get(2).unwrap().clone() as usize;
+    let unsigned_shorts: &[u16] = bytemuck::cast_slice(bytes.as_slice());
+    let x = unsigned_shorts[0] as usize;
+    let y = unsigned_shorts[1] as usize;
+    let z = unsigned_shorts[2] as usize;
     let expected_data_num = x * y * z;
     const U16MAX_F: f32 = u16::MAX as f32;
-    let data: Vec<f32> = unsigned_shorts
+    let data: Vec<f32> = unsigned_shorts[3..]
         .par_iter()
-        .skip(3)
         .map(|num| ((*num << 4) as f32) / U16MAX_F)
         .collect();
-    let uint_data = Vec::from_iter(unsigned_shorts[3..].iter().cloned());
     assert_eq!(expected_data_num, data.len(), "Data size not match");
-    return ((x, y, z), data, uint_data);
+    return ((x, y, z), data);
 }
 
 pub fn load_example_transfer_function() -> Vec<cgmath::Vector4<u8>> {
     #[rustfmt::skip]
-    static TF:[f32;48] = [
+    static TF: [f32; 48] = [
         0.0, 0.0, 0.0, 0.0,
         0.0, 0.5, 0.5, 0.01,
         0.0, 0.5, 0.5, 0.01,
@@ -242,13 +230,4 @@ pub fn load_example_transfer_function() -> Vec<cgmath::Vector4<u8>> {
         .map(|v| v * (u8::MAX as f32))
         .map(|v| cgmath::Vector4::new(v.x as u8, v.y as u8, v.z as u8, v.w as u8))
         .collect()
-}
-
-#[cfg(test)]
-mod util_tests {
-    use super::*;
-    #[test]
-    fn test_load_data() {
-        let (_, _, _data) = load_volume_data("./data/stagbeetle277x277x164.dat");
-    }
 }
