@@ -14,7 +14,7 @@ console_error_panic_hook = "0.1.6"
 cgmath = { version = "0.18", features = ["swizzle", "mint"] }
 env_logger = "0.7"
 log = "0.4"
-wgpu = { version = "0.10", path="/home/maple/NVME/research/wgpu/wgpu" }
+wgpu = { version = "0.10", path="../wgpu/wgpu" }
 console_log = "0.2.0"
 wasm-bindgen-futures = "0.4.26"
 web-sys = {version = "0.3.53"}
