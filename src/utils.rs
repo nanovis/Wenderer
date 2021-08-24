@@ -163,7 +163,7 @@ pub fn create_cube_fbo() -> Mesh3 {
 pub fn load_volume_data<P: AsRef<Path>>(_: P) -> ((usize, usize, usize), Vec<f32>, Vec<u16>) {
     let bytes = include_bytes!("../data/stagbeetle277x277x164.dat");
     let unsigned_shorts: Vec<u16> = bytes
-        .par_chunks_exact(2)
+        .chunks_exact(2)
         .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
         .collect();
     let x = unsigned_shorts.get(0).unwrap().clone() as usize;
@@ -172,7 +172,7 @@ pub fn load_volume_data<P: AsRef<Path>>(_: P) -> ((usize, usize, usize), Vec<f32
     let expected_data_num = x * y * z;
     const U16MAX_F: f32 = u16::MAX as f32;
     let data: Vec<f32> = unsigned_shorts
-        .par_iter()
+        .iter()
         .skip(3)
         .map(|num| ((*num << 4) as f32) / U16MAX_F)
         .collect();

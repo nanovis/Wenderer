@@ -1,10 +1,9 @@
 use crate::data::{Vertex2, Vertex3};
 use crate::rendering::{Geometry, OPENGL_TO_WGPU_MATRIX};
 use cgmath::{Matrix4, Vector2, Vector3, Vector4};
-use rayon::prelude::*;
 use std::mem::size_of;
 use wgpu::{
-    BufferAddress, IndexFormat, VertexStepMode, VertexAttribute, VertexBufferLayout, VertexFormat,
+    BufferAddress, IndexFormat, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
 };
 
 const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = VertexBufferLayout {
@@ -47,7 +46,7 @@ impl Mesh2 {
         assert_eq!(vertices.len(), attribs_2d.len());
         let vertices: Vec<Vertex2> = match transform_matrix {
             Some(transform_mat) => vertices
-                .par_iter()
+                .iter()
                 .map(|v| {
                     let v = transform_mat * V4::new(v.x, v.y, v.z, 1.0);
                     v.xyz() / v.w
@@ -59,7 +58,7 @@ impl Mesh2 {
                 })
                 .collect(),
             None => vertices
-                .par_iter()
+                .iter()
                 .zip(attribs_2d)
                 .map(|(v, a)| Vertex2 {
                     position: [v.x, v.y, v.z],
@@ -135,7 +134,7 @@ impl Mesh3 {
         assert_eq!(vertices.len(), attribs_3d.len());
         let vertices: Vec<Vertex3> = match transform_matrix {
             Some(transform_mat) => vertices
-                .par_iter()
+                .iter()
                 .map(|v| {
                     let v = transform_mat * V4::new(v.x, v.y, v.z, 1.0);
                     v.xyz() / v.w
@@ -147,7 +146,7 @@ impl Mesh3 {
                 })
                 .collect(),
             None => vertices
-                .par_iter()
+                .iter()
                 .zip(attribs_3d)
                 .map(|(v, a)| Vertex3 {
                     position: [v.x, v.y, v.z],
