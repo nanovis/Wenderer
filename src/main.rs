@@ -1,7 +1,6 @@
 use cgmath::Matrix4;
 use futures::executor::block_on;
 use half::f16;
-use rayon::prelude::*;
 use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
@@ -92,7 +91,7 @@ impl State {
         };
         // load volume into textures
         let ((x, y, z), data, _uint_data) = load_volume_data("./data/stagbeetle277x277x164.dat");
-        let data_f16: Vec<f16> = data.par_iter().map(|x| f16::from_f32(*x)).collect();
+        let data_f16: Vec<f16> = data.iter().map(|x| f16::from_f32(*x)).collect();
         let extent = Extent3d {
             width: x as u32,
             height: y as u32,
@@ -322,11 +321,7 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
 
 fn main() {
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_inner_size(PhysicalSize::new(1000, 1000))
-        .with_title("WebGPU-based DVR")
-        .build(&event_loop)
-        .unwrap();
+    let window = winit::window::Window::new(&event_loop).unwrap();
     #[cfg(not(target_arch = "wasm32"))]
     {
         env_logger::init();
