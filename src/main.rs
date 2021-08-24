@@ -39,7 +39,7 @@ impl State {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = Instance::new(Backends::PRIMARY);
+        let instance = Instance::new(Backends::all());
         let surface = unsafe { instance.create_surface(window) };
         // need adapter to create the device and queue
         let adapter = instance
@@ -53,7 +53,7 @@ impl State {
             .request_device(
                 &DeviceDescriptor {
                     features: Features::empty(), //The device you have limits the features you can use
-                    limits: Limits::default(), //The limits field describes the limit of certain types of resource we can create
+                    limits: Limits::downlevel_defaults().using_resolution(adapter.limits()), //The limits field describes the limit of certain types of resource we can create
                     label: None,
                 },
                 None,
