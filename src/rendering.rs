@@ -470,7 +470,7 @@ impl CanvasPass {
             ],
         });
         let transfer_function_values = load_example_transfer_function();
-        let transfer_function_texture = Tex::create_1d_texture_rgba8(
+        let transfer_function_texture = Tex::create_pseudo_1d_texture_rgba8(
             &transfer_function_values,
             device,
             queue,
@@ -484,7 +484,7 @@ impl CanvasPass {
                     visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Texture {
                         multisampled: false,
-                        view_dimension: TextureViewDimension::D1,
+                        view_dimension: TextureViewDimension::D2,
                         sample_type: TextureSampleType::Float { filterable: true },
                     },
                     count: None,

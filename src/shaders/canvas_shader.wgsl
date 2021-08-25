@@ -36,7 +36,7 @@ struct FragmentUniforms{
 [[group(1), binding(0)]] var volume_data: texture_3d<f32>;
 [[group(1), binding(1)]] var volume_sampler: sampler;
 
-[[group(2), binding(0)]] var tf_tex: texture_1d<f32>;
+[[group(2), binding(0)]] var tf_tex: texture_2d<f32>;
 [[group(2), binding(1)]] var tf_sampler: sampler;
 
 [[group(3),binding(0)]] var<uniform> uniforms: FragmentUniforms;
@@ -46,7 +46,7 @@ fn sample_volume(position: vec3<f32>) -> f32{
 }
 
 fn sample_tf(scalar: f32) -> vec4<f32>{
-    return textureSample(tf_tex, tf_sampler, scalar);
+    return textureSample(tf_tex, tf_sampler, vec2<f32>(scalar,0.0));
 }
 
 // this vertex_shader is equivalent to ./deprecated_glsl_shaders/canvas.frag
