@@ -139,7 +139,7 @@ impl State {
             &device,
             size.width,
             size.height,
-            &back_face_render_buffer.format,
+            &preferred_format,
             false,
             &camera,
             sample_count.clone(),
@@ -265,8 +265,8 @@ impl State {
         self.front_face_pass
             .render(&self.front_face_render_buffer.view, None, &mut encoder);
         self.back_face_pass
-            .render(&self.back_face_render_buffer.view, None, &mut encoder);
-        self.canvas_pass.render(&frame_tex_view, None, &mut encoder);
+            .render(&frame_tex_view, None, &mut encoder);
+        // self.canvas_pass.render(&frame_tex_view, None, &mut encoder);
         self.queue.submit(std::iter::once(encoder.finish()));
         Ok(())
     }
