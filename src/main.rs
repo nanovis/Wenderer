@@ -46,6 +46,7 @@ impl State {
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
+                force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
             .await
@@ -255,7 +256,7 @@ impl State {
     // Most modern graphics frameworks expect commands to be stored in a command buffer before being sent to the gpu.
     // The encoder builds a command buffer that we can then send to the gpu.
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let frame = self.surface.get_current_frame()?.output;
+        let frame = self.surface.get_current_texture()?;
         let frame_tex_view = frame.texture.create_view(&self.surface_view_desc);
         let mut encoder = self
             .device
@@ -269,6 +270,7 @@ impl State {
             .render(&self.back_face_render_buffer.view, None, &mut encoder);
         self.canvas_pass.render(&frame_tex_view, None, &mut encoder);
         self.queue.submit(std::iter::once(encoder.finish()));
+        frame.present();
         Ok(())
     }
 }
