@@ -1,6 +1,5 @@
 use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
-use rayon::prelude::*;
 use std::iter::FromIterator;
 use std::path::Path;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
@@ -32,11 +31,11 @@ impl CameraController {
         match event {
             WindowEvent::KeyboardInput {
                 input:
-                KeyboardInput {
-                    state,
-                    virtual_keycode: Some(keycode),
-                    ..
-                },
+                    KeyboardInput {
+                        state,
+                        virtual_keycode: Some(keycode),
+                        ..
+                    },
                 ..
             } => {
                 let is_pressed = *state == ElementState::Pressed; // when the key is released, *state will be Release and thus reset the corresponding state
@@ -201,7 +200,7 @@ pub fn load_volume_data<P: AsRef<Path>>(data_path: P) -> ((usize, usize, usize),
     let expected_data_num = x * y * z;
     const U16MAX_F: f32 = u16::MAX as f32;
     let data: Vec<f32> = unsigned_shorts[3..]
-        .par_iter()
+        .iter()
         .map(|num| ((*num << 4) as f32) / U16MAX_F)
         .collect();
     assert_eq!(expected_data_num, data.len(), "Data size not match");
