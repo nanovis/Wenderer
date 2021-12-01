@@ -1,6 +1,5 @@
 use crate::geometries::{Mesh3, V3};
 use crate::rendering::Camera;
-use std::iter::FromIterator;
 use std::path::Path;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
