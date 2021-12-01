@@ -39,21 +39,22 @@ impl State {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = Instance::new(Backends::all());
+        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
         // need adapter to create the device and queue
         let adapter = instance
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: PowerPreference::default(),
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
             .await
             .unwrap();
         let (device, queue) = adapter
             .request_device(
-                &DeviceDescriptor {
-                    features: Features::empty(), //The device you have limits the features you can use
-                    limits: Limits::downlevel_defaults().using_resolution(adapter.limits()), //The limits field describes the limit of certain types of resource we can create
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::empty(), //The device you have limits the features you can use
+                    limits: wgpu::Limits::default(), //The limits field describes the limit of certain types of resource we can create
                     label: None,
                 },
                 None,
@@ -253,8 +254,8 @@ impl State {
     // We also need to create a CommandEncoder to create the actual commands to send to the gpu.
     // Most modern graphics frameworks expect commands to be stored in a command buffer before being sent to the gpu.
     // The encoder builds a command buffer that we can then send to the gpu.
-    fn render(&mut self) -> Result<(), SurfaceError> {
-        let frame = self.surface.get_current_frame()?.output;
+    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        let frame = self.surface.get_current_texture()?;
         let frame_tex_view = frame.texture.create_view(&self.surface_view_desc);
         let mut encoder = self
             .device
@@ -268,6 +269,7 @@ impl State {
             .render(&self.back_face_render_buffer.view, None, &mut encoder);
         self.canvas_pass.render(&frame_tex_view, None, &mut encoder);
         self.queue.submit(std::iter::once(encoder.finish()));
+        frame.present();
         Ok(())
     }
 }
@@ -323,25 +325,25 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = winit::window::Window::new(&event_loop).unwrap();
     #[cfg(not(target_arch = "wasm32"))]
-        {
-            env_logger::init();
-            block_on(run(event_loop, window));
-        }
+    {
+        env_logger::init();
+        block_on(run(event_loop, window));
+    }
     #[cfg(target_arch = "wasm32")]
-        {
-            use console_error_panic_hook;
-            use std::panic;
-            panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init().expect("Could not initialize logger");
-            use winit::platform::web::WindowExtWebSys;
-            web_sys::window()
-                .and_then(|win| win.document())
-                .and_then(|doc| doc.body())
-                .and_then(|body| {
-                    body.append_child(&web_sys::Element::from(window.canvas()))
-                        .ok()
-                })
-                .expect("Could not append canvas to document body");
-            wasm_bindgen_futures::spawn_local(run(event_loop, window));
-        }
+    {
+        use console_error_panic_hook;
+        use std::panic;
+        panic::set_hook(Box::new(console_error_panic_hook::hook));
+        console_log::init().expect("Could not initialize logger");
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.canvas()))
+                    .ok()
+            })
+            .expect("Could not append canvas to document body");
+        wasm_bindgen_futures::spawn_local(run(event_loop, window));
+    }
 }
