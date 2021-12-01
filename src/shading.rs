@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::Result;
 use half::f16;
 use image::GenericImageView;
 use std::num::NonZeroU32;
