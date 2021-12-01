@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::Result;
 use half::f16;
 use image::GenericImageView;
 use std::num::NonZeroU32;
@@ -51,7 +51,7 @@ impl Tex {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
-                aspect: Default::default()
+                aspect: Default::default(),
             },
             bytemuck::cast_slice(flatten_data.as_slice()),
             ImageDataLayout {
@@ -102,7 +102,7 @@ impl Tex {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
-                aspect: Default::default()
+                aspect: Default::default(),
             },
             bytemuck::cast_slice(data.as_slice()),
             ImageDataLayout {
@@ -248,7 +248,7 @@ impl Tex {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
-                aspect: Default::default()
+                aspect: Default::default(),
             },
             rgba,
             ImageDataLayout {
