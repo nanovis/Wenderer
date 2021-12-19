@@ -1,4 +1,3 @@
-[[block]]
 struct Uniforms{
     view_proj_mat: mat4x4<f32>;
 };

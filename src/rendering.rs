@@ -191,8 +191,8 @@ impl D3Pass {
                 strip_index_format: None,
                 front_face: FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
                 cull_mode: Some(face_render_config.0),
+                unclipped_depth: false,
                 polygon_mode: PolygonMode::Fill,
-                clamp_depth: false,
                 conservative: false,
             },
             depth_stencil: Some(DepthStencilState {
@@ -210,6 +210,7 @@ impl D3Pass {
                 count: sample_count,
                 ..Default::default()
             }, // the config of this struct is the same as MultisampleState::default()
+            multiview: None,
         });
         Self {
             depth_texture,
@@ -378,10 +379,7 @@ impl CanvasPass {
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler {
-                            comparison: false, // mostly for depth texture
-                            filtering: true,
-                        },
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
                         count: None,
                     },
                     BindGroupLayoutEntry {
@@ -397,10 +395,7 @@ impl CanvasPass {
                     BindGroupLayoutEntry {
                         binding: 3,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler {
-                            comparison: false, // mostly for depth texture
-                            filtering: true,
-                        },
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
                         count: None,
                     },
                 ],
@@ -447,10 +442,7 @@ impl CanvasPass {
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler {
-                            comparison: false, // mostly for depth texture
-                            filtering: true,
-                        },
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
                         count: None,
                     },
                 ],
@@ -492,10 +484,7 @@ impl CanvasPass {
                 BindGroupLayoutEntry {
                     binding: 1,
                     visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler {
-                        comparison: false, // mostly for depth texture
-                        filtering: true,
-                    },
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
@@ -594,8 +583,8 @@ impl CanvasPass {
                 strip_index_format: None,
                 front_face: FrontFace::Ccw, // facing forward if the vertices are arranged in a counter clockwise direction
                 cull_mode: Some(Face::Back),
+                unclipped_depth: false,
                 polygon_mode: PolygonMode::Fill,
-                clamp_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
@@ -603,6 +592,7 @@ impl CanvasPass {
                 count: sample_count,
                 ..Default::default()
             },
+            multiview: None
         });
         Self {
             face_texture_bind_group_layout,

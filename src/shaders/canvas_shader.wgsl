@@ -17,7 +17,6 @@ fn vertex_shader(vertex: VertexInput) -> VertexOutput{
     return out;
 }
 
-[[block]]
 struct FragmentUniforms{
     step_size: f32;
     base_distance: f32;

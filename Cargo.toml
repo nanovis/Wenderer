@@ -8,11 +8,11 @@ edition = "2021"
 
 [dependencies]
 image = "0.23"
-winit = "0.25"
+winit = "0.26"
 cgmath = { version = "0.18", features = ["swizzle"] }
 env_logger = "0.7"
 log = "0.4"
-wgpu = "0.11"
+wgpu = "0.12"
 crevice = { version = "0.8.0", features = ["cgmath"] }
 futures = "0.3"
 anyhow = "1.0"
