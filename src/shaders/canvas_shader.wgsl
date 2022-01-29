@@ -67,7 +67,7 @@ fn fragment_shader(in : VertexOutput) -> [[location(0)]] vec4<f32>{
     for(var i:i32 = 0; i<max_marching_step; i = i+1){
         let scalar = sample_volume(position);
         let src = sample_tf(scalar);
-        let opacity = 1.0 - pow(1.0 - src.a, uniforms.step_size / uniforms.base_distance);
+        let opacity = 1.0 - pow(1.0 - src.a, uniforms.step_size / uniforms.base_distance); // opacity correction
         let new_src = vec4<f32>(src.rgb*opacity, opacity);
         var normal : vec3<f32>;
         normal.x = sample_volume(position + x_delta) - sample_volume(position - x_delta);
@@ -86,9 +86,9 @@ fn fragment_shader(in : VertexOutput) -> [[location(0)]] vec4<f32>{
             specular_color = I_specular * pf;
         }
         let final_color = vec4<f32>(I_ambient + diffuse_color + specular_color, 1.0)* new_src;
-        composite_color = (1.0 - composite_color.a) * final_color + composite_color;
+        composite_color = (1.0 - composite_color.a) * final_color + composite_color; // front-to-back compositing
         if (composite_color.a > uniforms.opacity_threshold){
-            break;
+            break; // early ray termination
         }
         position = position + ray_dir * uniforms.step_size;
     }
