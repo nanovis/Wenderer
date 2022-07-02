@@ -6,7 +6,7 @@ use crate::data::{CanvasShaderUniforms, Uniforms};
 use crate::geometries::{Mesh3, Rectangle};
 use crate::shading::Tex;
 use crate::utils::{create_cube_fbo, load_example_transfer_function};
-use crevice::std140::{AsStd140, Std140};
+use crevice::std140::AsStd140;
 use std::num::NonZeroU32;
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems.
