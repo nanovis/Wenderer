@@ -159,7 +159,7 @@ impl D3Pass {
             usage: BufferUsages::INDEX,
         });
 
-        let shader_module = device.create_shader_module(&ShaderModuleDescriptor {
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("3D Pass shaders"),
             source: ShaderSource::Wgsl(include_str!("./shaders/shader3d.wgsl").into()),
         });
@@ -180,11 +180,11 @@ impl D3Pass {
             fragment: Some(FragmentState {
                 module: &shader_module,
                 entry_point: "fragment_shader",
-                targets: &[ColorTargetState {
+                targets: &[Some(ColorTargetState {
                     format: target_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: ColorWrites::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
-                }],
+                })],
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -280,7 +280,7 @@ impl RenderPass for D3Pass {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             // color_attachments describe where we are going to draw our color to
-            color_attachments: &[RenderPassColorAttachment {
+            color_attachments: &[Some(RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
                 view,
                 // The resolve_target is the texture that will receive the resolved output.
@@ -296,7 +296,7 @@ impl RenderPass for D3Pass {
                     }),
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                 view: external_depth_view.unwrap_or(&self.depth_texture.view),
                 depth_ops: Some(Operations {
@@ -545,7 +545,7 @@ impl CanvasPass {
             usage: BufferUsages::INDEX,
         });
 
-        let shader_module = device.create_shader_module(&ShaderModuleDescriptor {
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Canvas Pass Shaders"),
             source: ShaderSource::Wgsl(include_str!("./shaders/canvas_shader.wgsl").into()),
         });
@@ -572,11 +572,11 @@ impl CanvasPass {
             fragment: Some(FragmentState {
                 module: &shader_module,
                 entry_point: "fragment_shader",
-                targets: &[ColorTargetState {
+                targets: &[Some(ColorTargetState {
                     format: tex_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: ColorWrites::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
-                }],
+                })],
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -592,7 +592,7 @@ impl CanvasPass {
                 count: sample_count,
                 ..Default::default()
             },
-            multiview: None
+            multiview: None,
         });
         Self {
             face_texture_bind_group_layout,
@@ -679,7 +679,7 @@ impl RenderPass for CanvasPass {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             // color_attachments describe where we are going to draw our color to
-            color_attachments: &[RenderPassColorAttachment {
+            color_attachments: &[Some(RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
                 view,
                 // The resolve_target is the texture that will receive the resolved output.
@@ -695,7 +695,7 @@ impl RenderPass for CanvasPass {
                     }),
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: None,
         });
         render_pass.set_pipeline(&self.render_pipeline);

@@ -62,7 +62,7 @@ impl State {
             )
             .await
             .unwrap();
-        let preferred_format = surface.get_preferred_format(&adapter).unwrap();
+        let preferred_format = surface.get_supported_formats(&adapter)[0];
         let surface_configs = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: preferred_format,
