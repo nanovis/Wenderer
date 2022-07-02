@@ -26,7 +26,7 @@ pub struct Uniforms {
 impl Uniforms {
     pub fn new() -> Self {
         Self {
-            model_view_proj: cgmath::Matrix4::identity(),
+            model_view_proj: Matrix4::identity(),
         }
     }
     pub fn update_model_view_proj(&mut self, camera: &Camera, model_transformation: Matrix4<f32>) {
