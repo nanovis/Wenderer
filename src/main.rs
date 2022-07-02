@@ -20,7 +20,7 @@ struct State {
     surface_view_desc: TextureViewDescriptor<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    size: winit::dpi::PhysicalSize<u32>,
+    size: PhysicalSize<u32>,
     camera: Camera,
     camera_controller: CameraController,
     cube_scaling: Matrix4<f32>,
