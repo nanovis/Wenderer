@@ -15,7 +15,7 @@ struct VertexOutput{
     @location(0) v_coord: vec3<f32>,
 };
 
-// this vertex_shader is equivalent to ./deprecated_glsl_shaders/shader.vert
+// simple vertex shader for drawing a box
 @vertex
 fn vertex_shader(vertex: VertexInput) -> VertexOutput{
     var out: VertexOutput;
@@ -24,7 +24,7 @@ fn vertex_shader(vertex: VertexInput) -> VertexOutput{
     return out;
 }
 
-// this fragment_shader is equivalent to ./deprecated_glsl_shaders/shader.frag
+// draw fragment position in world space to buffer
 @fragment
 fn fragment_shader(in: VertexOutput) -> @location(0) vec4<f32>{
     return vec4<f32>(in.v_coord, 1.0);

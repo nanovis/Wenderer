@@ -8,7 +8,7 @@ struct VertexOutput{
     @location(0) tex_coord: vec2<f32>,
 }
 
-// this vertex_shader is equivalent to ./deprecated_glsl_shaders/canvas.vert
+// simple vertex shader
 @vertex
 fn vertex_shader(vertex: VertexInput) -> VertexOutput{
     var out: VertexOutput;
@@ -27,14 +27,17 @@ struct FragmentUniforms{
     shininess: f32,
 }
 
+// textrues storing ray in and out positions
 @group(0) @binding(0) var front_face_tex: texture_2d<f32>;
 @group(0) @binding(1) var front_face_sampler: sampler;
 @group(0) @binding(2) var back_face_tex: texture_2d<f32>;
 @group(0) @binding(3) var back_face_sampler: sampler;
 
+// volume data
 @group(1) @binding(0) var volume_data: texture_3d<f32>;
 @group(1) @binding(1) var volume_sampler: sampler;
 
+// tf: transfer function
 @group(2) @binding(0) var tf_tex: texture_1d<f32>;
 @group(2) @binding(1) var tf_sampler: sampler;
 
@@ -48,7 +51,7 @@ fn sample_tf(scalar: f32) -> vec4<f32>{
     return textureSample(tf_tex, tf_sampler, scalar);
 }
 
-// this vertex_shader is equivalent to ./deprecated_glsl_shaders/canvas.frag
+// direct volume rendering shader
 @fragment
 fn fragment_shader(in : VertexOutput) -> @location(0) vec4<f32>{
     let I_ambient = vec3<f32>(uniforms.ambient);
