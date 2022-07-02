@@ -1,15 +1,15 @@
 struct VertexInput{
-    [[location(0)]] pos: vec3<f32>;
-    [[location(1)]] tex_coord: vec2<f32>;
-};
+    @location(0) pos: vec3<f32>,
+    @location(1) tex_coord: vec2<f32>,
+}
 
 struct VertexOutput{
-    [[builtin(position)]] clip_position: vec4<f32>;
-    [[location(0)]] tex_coord: vec2<f32>;
-};
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coord: vec2<f32>,
+}
 
 // this vertex_shader is equivalent to ./deprecated_glsl_shaders/canvas.vert
-[[stage(vertex)]]
+@vertex
 fn vertex_shader(vertex: VertexInput) -> VertexOutput{
     var out: VertexOutput;
     out.tex_coord = vertex.tex_coord;
@@ -18,27 +18,27 @@ fn vertex_shader(vertex: VertexInput) -> VertexOutput{
 }
 
 struct FragmentUniforms{
-    step_size: f32;
-    base_distance: f32;
-    opacity_threshold: f32;
-    ambient: f32;
-    diffuse: f32;
-    specular: f32;
-    shininess: f32;
-};
+    step_size: f32,
+    base_distance: f32,
+    opacity_threshold: f32,
+    ambient: f32,
+    diffuse: f32,
+    specular: f32,
+    shininess: f32,
+}
 
-[[group(0), binding(0)]] var front_face_tex: texture_2d<f32>;
-[[group(0), binding(1)]] var front_face_sampler: sampler;
-[[group(0), binding(2)]] var back_face_tex: texture_2d<f32>;
-[[group(0), binding(3)]] var back_face_sampler: sampler;
+@group(0) @binding(0) var front_face_tex: texture_2d<f32>;
+@group(0) @binding(1) var front_face_sampler: sampler;
+@group(0) @binding(2) var back_face_tex: texture_2d<f32>;
+@group(0) @binding(3) var back_face_sampler: sampler;
 
-[[group(1), binding(0)]] var volume_data: texture_3d<f32>;
-[[group(1), binding(1)]] var volume_sampler: sampler;
+@group(1) @binding(0) var volume_data: texture_3d<f32>;
+@group(1) @binding(1) var volume_sampler: sampler;
 
-[[group(2), binding(0)]] var tf_tex: texture_1d<f32>;
-[[group(2), binding(1)]] var tf_sampler: sampler;
+@group(2) @binding(0) var tf_tex: texture_1d<f32>;
+@group(2) @binding(1) var tf_sampler: sampler;
 
-[[group(3),binding(0)]] var<uniform> uniforms: FragmentUniforms;
+@group(3) @binding(0) var<uniform> uniforms: FragmentUniforms;
 
 fn sample_volume(position: vec3<f32>) -> f32{
     return textureSample(volume_data, volume_sampler, position).r;
@@ -49,8 +49,8 @@ fn sample_tf(scalar: f32) -> vec4<f32>{
 }
 
 // this vertex_shader is equivalent to ./deprecated_glsl_shaders/canvas.frag
-[[stage(fragment)]]
-fn fragment_shader(in : VertexOutput) -> [[location(0)]] vec4<f32>{
+@fragment
+fn fragment_shader(in : VertexOutput) -> @location(0) vec4<f32>{
     let I_ambient = vec3<f32>(uniforms.ambient);
     let I_diffuse = vec3<f32>(uniforms.diffuse);
     let I_specular = vec3<f32>(uniforms.specular);
