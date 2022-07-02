@@ -93,7 +93,7 @@ impl State {
         };
         // load volume into textures
         let ((x, y, z), data, _uint_data) = load_volume_data("./data/stagbeetle277x277x164.dat");
-        let data_f16: Vec<f16> = data.par_iter().map(|x| f16::from_f32(*x)).collect();
+        let data_f16: Vec<f16> = data.into_par_iter().map(f16::from_f32).collect();
         let extent = Extent3d {
             width: x as u32,
             height: y as u32,
@@ -176,7 +176,7 @@ impl State {
     }
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
     // That's the reason we stored the physical size and the sc_desc used to create the swap chain.
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    fn resize(&mut self, new_size: PhysicalSize<u32>) {
         self.size = new_size;
         self.surface_configs.width = new_size.width;
         self.surface_configs.height = new_size.height;
