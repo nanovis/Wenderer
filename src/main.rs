@@ -6,7 +6,7 @@ use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{load_volume_data, CameraController};
-use wgpu::{Extent3d, TextureFormat, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, TextureViewDimension};
+use wgpu::{Extent3d, TextureFormat, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, TextureViewDimension, CompositeAlphaMode};
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -69,6 +69,7 @@ impl State {
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: CompositeAlphaMode::Auto
         };
         surface.configure(&device, &surface_configs);
         let surface_view_desc = TextureViewDescriptor {
