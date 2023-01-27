@@ -10,15 +10,15 @@ edition = "2021"
 image = "0.24"
 winit = "0.27"
 cgmath = { version = "0.18", features = ["swizzle"] }
-env_logger = "0.9"
+env_logger = "0.10"
 log = "0.4"
 wgpu = "0.15"
-crevice = { version = "0.11.0", features = ["cgmath"] }
+crevice = { version = "0.12", features = ["cgmath"] }
 futures = "0.3"
 anyhow = "1.0"
-bytemuck = { version = "1.9", features = ["derive"] }
-rayon = "1.5.3"
-half = { version = "2.0", features = ["num-traits", "bytemuck"] }
+bytemuck = { version = "1.13", features = ["derive"] }
+rayon = "1.6"
+half = { version = "2.2", features = ["num-traits", "bytemuck"] }
 
 [build-dependencies]
 anyhow = "1.0"
