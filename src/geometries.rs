@@ -4,7 +4,7 @@ use cgmath::{Matrix4, Vector2, Vector3, Vector4};
 use rayon::prelude::*;
 use std::mem::size_of;
 use wgpu::{
-    BufferAddress, IndexFormat, VertexStepMode, VertexAttribute, VertexBufferLayout, VertexFormat,
+    BufferAddress, IndexFormat, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
 };
 
 const DEFAULT_VERTEX_LAYOUT: VertexBufferLayout = VertexBufferLayout {
