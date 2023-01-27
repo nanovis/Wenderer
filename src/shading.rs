@@ -166,7 +166,7 @@ impl Tex {
             min_filter: FilterMode::Linear,
             mipmap_filter: FilterMode::Nearest,
             compare: Some(CompareFunction::LessEqual), // highlight: If we do decide to render our depth texture, we need to use CompareFunction::LessEqual. This is due to how the samplerShadow and sampler2DShadow() interacts with the texture() function in GLSL
-            lod_min_clamp: -100.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 100.0,
             ..Default::default()
         });
