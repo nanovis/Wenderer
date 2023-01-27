@@ -44,6 +44,7 @@ impl Tex {
             dimension: TextureDimension::D1,
             format,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            view_formats: &[format],
         };
         let texture = device.create_texture(&desc);
         queue.write_texture(
@@ -95,6 +96,7 @@ impl Tex {
             dimension: TextureDimension::D3,
             format,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            view_formats: &[format],
         };
         let texture = device.create_texture(&desc);
         queue.write_texture(
@@ -153,6 +155,7 @@ impl Tex {
             dimension: TextureDimension::D2,
             format: format.clone(),
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+            view_formats: &[format],
         };
         let texture = device.create_texture(&desc);
         let view = texture.create_view(&TextureViewDescriptor::default());
@@ -199,6 +202,7 @@ impl Tex {
             dimension: TextureDimension::D2,
             format: format.clone(),
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[format.clone()],
         });
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -241,6 +245,7 @@ impl Tex {
             dimension: TextureDimension::D2,
             format: format.clone(),
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            view_formats: &[format],
         });
 
         queue.write_texture(

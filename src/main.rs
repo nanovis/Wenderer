@@ -6,7 +6,10 @@ use std::num::NonZeroU32;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{load_volume_data, CameraController};
-use wgpu::{Extent3d, TextureFormat, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, TextureViewDimension, CompositeAlphaMode};
+use wgpu::{
+    CompositeAlphaMode, Extent3d, SurfaceConfiguration, TextureFormat, TextureUsages,
+    TextureViewDescriptor, TextureViewDimension,
+};
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -40,8 +43,12 @@ impl State {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
-        let surface = unsafe { instance.create_surface(window) };
+        let instance = wgpu::Instance::default();
+        let surface = unsafe {
+            instance
+                .create_surface(window)
+                .expect("Surface creation failed")
+        };
         // need adapter to create the device and queue
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -62,14 +69,15 @@ impl State {
             )
             .await
             .unwrap();
-        let preferred_format = surface.get_supported_formats(&adapter)[0];
+        let preferred_format = surface.get_capabilities(&adapter).formats[0];
         let surface_configs = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: preferred_format,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: CompositeAlphaMode::Auto
+            alpha_mode: CompositeAlphaMode::Auto,
+            view_formats: vec![preferred_format],
         };
         surface.configure(&device, &surface_configs);
         let surface_view_desc = TextureViewDescriptor {

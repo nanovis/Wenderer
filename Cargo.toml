@@ -12,7 +12,7 @@ winit = "0.27"
 cgmath = { version = "0.18", features = ["swizzle"] }
 env_logger = "0.9"
 log = "0.4"
-wgpu = "0.14"
+wgpu = "0.15"
 crevice = { version = "0.11.0", features = ["cgmath"] }
 futures = "0.3"
 anyhow = "1.0"
