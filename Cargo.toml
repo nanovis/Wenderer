@@ -1,6 +1,6 @@
 [package]
 name = "wenderer"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["feng liang <feng.liang@kaust.edu.sa>"]
 edition = "2021"
 
