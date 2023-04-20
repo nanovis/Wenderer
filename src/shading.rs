@@ -57,8 +57,8 @@ impl Tex {
             bytemuck::cast_slice(flatten_data.as_slice()),
             ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(NonZeroU32::new(length * 4).unwrap()),
-                rows_per_image: Some(NonZeroU32::new(1).unwrap()),
+                bytes_per_row: Some(length * 4),
+                rows_per_image: Some(1),
             },
             size.clone(),
         );
@@ -109,8 +109,8 @@ impl Tex {
             bytemuck::cast_slice(data.as_slice()),
             ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(NonZeroU32::new(2 * size.width).unwrap()),
-                rows_per_image: Some(NonZeroU32::new(size.height).unwrap()),
+                bytes_per_row: Some(2 * size.width),
+                rows_per_image: Some(size.height),
             },
             size.clone(),
         );
@@ -258,8 +258,8 @@ impl Tex {
             rgba,
             ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(NonZeroU32::new(4 * dimensions.0).unwrap()),
-                rows_per_image: Some(NonZeroU32::new(dimensions.1).unwrap()),
+                bytes_per_row: Some(4 * dimensions.0),
+                rows_per_image: Some(dimensions.1),
             },
             size,
         );
