@@ -1,9 +1,13 @@
-use crate::geometries::{Mesh3, V3};
-use crate::rendering::Camera;
-use rayon::prelude::*;
 use std::iter::FromIterator;
 use std::path::Path;
-use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
+
+use rayon::prelude::*;
+use winit::event::KeyEvent;
+use winit::keyboard::KeyCode;
+use winit::keyboard::PhysicalKey::Code;
+
+use crate::geometries::{Mesh3, V3};
+use crate::rendering::Camera;
 
 pub struct CameraController {
     speed: f32,
@@ -28,47 +32,38 @@ impl CameraController {
         }
     }
 
-    pub fn process_events(&mut self, event: &WindowEvent) -> bool {
-        match event {
-            WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        state,
-                        virtual_keycode: Some(keycode),
-                        ..
-                    },
-                ..
-            } => {
-                let is_pressed = *state == ElementState::Pressed; // when the key is released, *state will be Release and thus reset the corresponding state
-                match keycode {
-                    VirtualKeyCode::Space => {
-                        self.is_up_pressed = is_pressed;
-                        true
-                    }
-                    VirtualKeyCode::LShift => {
-                        self.is_down_pressed = is_pressed;
-                        true
-                    }
-                    VirtualKeyCode::W | VirtualKeyCode::Up => {
-                        self.is_forward_pressed = is_pressed;
-                        true
-                    }
-                    VirtualKeyCode::A | VirtualKeyCode::Left => {
-                        self.is_left_pressed = is_pressed;
-                        true
-                    }
-                    VirtualKeyCode::S | VirtualKeyCode::Down => {
-                        self.is_backward_pressed = is_pressed;
-                        true
-                    }
-                    VirtualKeyCode::D | VirtualKeyCode::Right => {
-                        self.is_right_pressed = is_pressed;
-                        true
-                    }
-                    _ => false,
+    pub fn process_events(&mut self, event: &KeyEvent) -> bool {
+        let is_pressed = event.state.is_pressed(); // when the key is released, *state will be Release and thus reset the corresponding state
+        if let Code(keycode) = event.physical_key {
+            match keycode {
+                KeyCode::Space => {
+                    self.is_up_pressed = is_pressed;
+                    true
                 }
+                KeyCode::ShiftLeft => {
+                    self.is_down_pressed = is_pressed;
+                    true
+                }
+                KeyCode::KeyW | KeyCode::ArrowUp => {
+                    self.is_forward_pressed = is_pressed;
+                    true
+                }
+                KeyCode::KeyA | KeyCode::ArrowLeft => {
+                    self.is_left_pressed = is_pressed;
+                    true
+                }
+                KeyCode::KeyS | KeyCode::ArrowDown => {
+                    self.is_backward_pressed = is_pressed;
+                    true
+                }
+                KeyCode::KeyD | KeyCode::ArrowRight => {
+                    self.is_right_pressed = is_pressed;
+                    true
+                }
+                _ => false
             }
-            _ => false,
+        } else {
+            false
         }
     }
 
@@ -184,7 +179,7 @@ pub fn load_volume_data<P: AsRef<Path>>(
 
 pub fn load_example_transfer_function() -> Vec<cgmath::Vector4<u8>> {
     #[rustfmt::skip]
-    static TF:[f32;48] = [
+    static TF: [f32; 48] = [
         0.0, 0.0, 0.0, 0.0,
         0.0, 0.5, 0.5, 0.01,
         0.0, 0.5, 0.5, 0.01,

@@ -294,17 +294,19 @@ impl RenderPass for D3Pass {
                         b: self.clear_color.2,
                         a: self.clear_color.3,
                     }),
-                    store: true,
+                    store: StoreOp::Store,
                 },
             })],
             depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                 view: external_depth_view.unwrap_or(&self.depth_texture.view),
                 depth_ops: Some(Operations {
                     load: self.depth_clear_op.clone(),
-                    store: true,
+                    store: StoreOp::Store,
                 }),
                 stencil_ops: None,
             }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
         render_pass.set_pipeline(&self.render_pipeline);
         // set_vertex_buffer takes two parameters.
@@ -693,10 +695,12 @@ impl RenderPass for CanvasPass {
                         b: 0.0,
                         a: 0.0,
                     }),
-                    store: true,
+                    store: StoreOp::Store,
                 },
             })],
             depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
         render_pass.set_pipeline(&self.render_pipeline);
         // set_vertex_buffer takes two parameters.
