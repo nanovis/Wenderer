@@ -21,8 +21,8 @@ use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{CameraController, load_volume_data};
 
-struct State {
-    surface: wgpu::Surface,
+struct State<'w> {
+    surface: wgpu::Surface<'w>,
     surface_configs: SurfaceConfiguration,
     surface_view_desc: TextureViewDescriptor<'static>,
     device: wgpu::Device,
@@ -38,21 +38,17 @@ struct State {
     canvas_pass: CanvasPass,
 }
 
-impl State {
+impl<'w> State<'w> {
     /// This is 1 because render buffer textures for front-face and back-face rendering is the resolved target
     /// not the multisampled target
     const FACE_RENDER_BUFFER_SAMPLE_COUNT: u32 = 1;
     // need async because we need to await some struct creation here
-    async fn new(window: &Window, sample_count: NonZeroU32) -> Self {
+    async fn new(window: &'w Window, sample_count: NonZeroU32) -> Self {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::default();
-        let surface = unsafe {
-            instance
-                .create_surface(window)
-                .expect("Surface creation failed")
-        };
+        let surface = instance.create_surface(window).expect("Failed to create surface");
         // need adapter to create the device and queue
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -65,9 +61,9 @@ impl State {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(), //The device you have limits the features you can use
-                    limits: wgpu::Limits::default(), //The limits field describes the limit of certain types of resource we can create
                     label: None,
+                    required_features: wgpu::Features::empty(), //The device you have limits the features you can use
+                    required_limits: wgpu::Limits::default(), //The limits field describes the limit of certain types of resource we can create
                 },
                 None,
             )
@@ -80,6 +76,7 @@ impl State {
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
+            desired_maximum_frame_latency: 2, // 2 is the default value
             alpha_mode: CompositeAlphaMode::Auto,
             view_formats: vec![preferred_format],
         };
@@ -284,7 +281,7 @@ fn main() {
         .unwrap();
     let sample_count = 4;
     let mut state = block_on(State::new(&window, NonZeroU32::new(sample_count).unwrap()));
-    event_loop.run(move |event, event_loop_window_target| match event {
+    event_loop.run(|event, event_loop_window_target| match event {
         Event::WindowEvent {
             ref event,
             window_id,
