@@ -175,11 +175,13 @@ impl D3Pass {
             vertex: VertexState {
                 module: &shader_module,
                 entry_point: "vertex_shader",
+                compilation_options: Default::default(),
                 buffers: &[cube.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader_module,
                 entry_point: "fragment_shader",
+                compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: target_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
@@ -569,11 +571,13 @@ impl CanvasPass {
             vertex: VertexState {
                 module: &shader_module,
                 entry_point: "vertex_shader",
+                compilation_options: Default::default(),
                 buffers: &[canvas.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader_module,
                 entry_point: "fragment_shader",
+                compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: tex_format.clone(),
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
