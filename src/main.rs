@@ -4,10 +4,7 @@ use cgmath::Matrix4;
 use futures::executor::block_on;
 use half::f16;
 use rayon::prelude::*;
-use wgpu::{
-    CompositeAlphaMode, Extent3d, SurfaceConfiguration, TextureFormat, TextureUsages,
-    TextureViewDescriptor, TextureViewDimension,
-};
+use wgpu::{CompositeAlphaMode, Extent3d, MemoryHints, SurfaceConfiguration, TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use winit::{
     event::*,
     event_loop::EventLoop,
@@ -64,6 +61,7 @@ impl<'w> State<'w> {
                     label: None,
                     required_features: wgpu::Features::empty(), //The device you have limits the features you can use
                     required_limits: wgpu::Limits::default(), //The limits field describes the limit of certain types of resource we can create
+                    memory_hints: MemoryHints::Performance,
                 },
                 None,
             )

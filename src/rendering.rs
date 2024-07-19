@@ -213,6 +213,7 @@ impl D3Pass {
                 ..Default::default()
             }, // the config of this struct is the same as MultisampleState::default()
             multiview: None,
+            cache: None,
         });
         Self {
             depth_texture,
@@ -599,6 +600,7 @@ impl CanvasPass {
                 ..Default::default()
             },
             multiview: None,
+            cache: None,
         });
         Self {
             face_texture_bind_group_layout,
