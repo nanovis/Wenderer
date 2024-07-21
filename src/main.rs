@@ -197,14 +197,20 @@ impl RenderState {
 struct App {
     render_configs: RenderConfigs,
     render_state: Option<RenderState>,
+    window_size: PhysicalSize<u32>,
+    title: String,
 }
 
 impl App {
     // need async because we need to await some struct creation here
-    fn new(render_configs: RenderConfigs) -> Self {
+    fn new(render_configs: RenderConfigs,
+           window_size: PhysicalSize<u32>,
+           title: String) -> Self {
         Self {
             render_configs,
             render_state: None,
+            window_size,
+            title,
         }
     }
 
@@ -301,10 +307,10 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        println!("Resumed");
         let window_attributes = Window::default_attributes()
-            .with_inner_size(PhysicalSize::new(1000, 1000))
-            .with_title("WebGPU-based DVR");
-        eprintln!("Resumed");
+            .with_inner_size(self.window_size)
+            .with_title(self.title.clone());
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
         self.render_state = Some(block_on(RenderState::new(window.clone(), self.render_configs.sample_count)));
         // to trigger the first render
@@ -359,6 +365,8 @@ fn main() {
     let render_configs = RenderConfigs {
         sample_count: NonZeroU32::new(4).unwrap(),
     };
-    let mut app = App::new(render_configs);
+    let mut app = App::new(render_configs,
+                           PhysicalSize::new(1000, 1000),
+                           "WebGPU-based DVR".to_string());
     event_loop.run_app(&mut app).expect("Failed to run app");
 }
