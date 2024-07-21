@@ -4,21 +4,24 @@ use cgmath::Matrix4;
 use futures::executor::block_on;
 use half::f16;
 use rayon::prelude::*;
-use wgpu::{CompositeAlphaMode, Extent3d, MemoryHints, SurfaceConfiguration, TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension};
+use wgpu::{CompositeAlphaMode, Extent3d, MemoryHints, SurfaceConfiguration, SurfaceTarget, TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use winit::{
     event::*,
     event_loop::EventLoop,
-    window::{Window, WindowBuilder},
+    window::Window,
 };
+use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
+use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::keyboard::PhysicalKey::Code;
-
+use winit::window::WindowId;
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{CameraController, load_volume_data};
 
-struct State<'w> {
+struct App<'w> {
+    window: Window,
     surface: wgpu::Surface<'w>,
     surface_configs: SurfaceConfiguration,
     surface_view_desc: TextureViewDescriptor<'static>,
@@ -35,17 +38,18 @@ struct State<'w> {
     canvas_pass: CanvasPass,
 }
 
-impl<'w> State<'w> {
+impl<'w> App<'w> {
     /// This is 1 because render buffer textures for front-face and back-face rendering is the resolved target
     /// not the multisampled target
     const FACE_RENDER_BUFFER_SAMPLE_COUNT: u32 = 1;
+
     // need async because we need to await some struct creation here
-    async fn new(window: &'w Window, sample_count: NonZeroU32) -> Self {
+    async fn new(window: Window, sample_count: NonZeroU32) -> Self {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::default();
-        let surface = instance.create_surface(window).expect("Failed to create surface");
+        let surface = instance.create_surface(&window).expect("Failed to create surface");
         // need adapter to create the device and queue
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -125,7 +129,7 @@ impl<'w> State<'w> {
             (size.width, size.height),
             &device,
             Some("Front face render buffer texture"),
-            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
             &face_buffer_format,
         );
         let front_face_pass = D3Pass::new(
@@ -142,7 +146,7 @@ impl<'w> State<'w> {
             (size.width, size.height),
             &device,
             Some("Back face render buffer texture"),
-            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
             &face_buffer_format,
         );
         let back_face_pass = D3Pass::new(
@@ -166,6 +170,7 @@ impl<'w> State<'w> {
             sample_count,
         );
         Self {
+            window,
             surface,
             surface_configs,
             surface_view_desc,
@@ -182,6 +187,7 @@ impl<'w> State<'w> {
             canvas_pass,
         }
     }
+
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
     // That's the reason we stored the physical size and the sc_desc used to create the swap chain.
     fn resize(&mut self, new_size: PhysicalSize<u32>) {
@@ -212,14 +218,14 @@ impl<'w> State<'w> {
             (self.size.width, self.size.height),
             &self.device,
             Some("Front Face Render Buffer"),
-            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
             &self.front_face_render_buffer.format,
         );
         self.back_face_render_buffer = Tex::create_render_buffer(
             (self.size.width, self.size.height),
             &self.device,
             Some("Back Face Render Buffer"),
-            NonZeroU32::new(State::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
             &self.back_face_render_buffer.format,
         );
         self.canvas_pass.change_bound_face_textures(
@@ -269,54 +275,61 @@ impl<'w> State<'w> {
     }
 }
 
+impl ApplicationHandler for App<'_> {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let window_attributes = Window::default_attributes()
+            .with_inner_size(PhysicalSize::new(1000, 1000))
+            .with_title("WebGPU-based DVR");
+        self.window = event_loop.create_window(window_attributes).unwrap()
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+        if self.window.id() != window_id {
+            return;
+        }
+        match &event {
+            WindowEvent::Resized(physical_size) => self.resize(*physical_size),
+            WindowEvent::ScaleFactorChanged { .. } => {
+                self.resize(self.window.inner_size());
+            }
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::KeyboardInput { event, .. } => {
+                if self.input(event) {
+                    self.window.request_redraw();
+                    return;
+                }
+                if event.state.is_pressed() {
+                    match event.physical_key {
+                        Code(KeyCode::Escape) => {
+                            event_loop.exit();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            WindowEvent::RedrawRequested => {
+                self.update();
+                match self.render() {
+                    Ok(_) => {}
+                    // Recreate the swap_chain if lost
+                    Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
+                    Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
+                    Err(e) => eprintln!("Some unhandled error {:?}", e),
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
-    let window = WindowBuilder::new()
+    let window_attributes = Window::default_attributes()
         .with_inner_size(PhysicalSize::new(1000, 1000))
-        .with_title("WebGPU-based DVR")
-        .build(&event_loop)
-        .unwrap();
+        .with_title("WebGPU-based DVR");
+    let window = event_loop.create_window(window_attributes).unwrap();
     let sample_count = 4;
-    let mut state = block_on(State::new(&window, NonZeroU32::new(sample_count).unwrap()));
-    event_loop.run(|event, event_loop_window_target| match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == window.id() => {
-            match &event {
-                WindowEvent::Resized(physical_size) => state.resize(*physical_size),
-                WindowEvent::ScaleFactorChanged { .. } => {
-                    state.resize(window.inner_size());
-                }
-                WindowEvent::CloseRequested => event_loop_window_target.exit(),
-                WindowEvent::KeyboardInput { event, .. } => {
-                    if state.input(event) {
-                        window.request_redraw();
-                        return;
-                    }
-                    if event.state.is_pressed() {
-                        match event.physical_key {
-                            Code(KeyCode::Escape) => {
-                                event_loop_window_target.exit();
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                WindowEvent::RedrawRequested => {
-                    state.update();
-                    match state.render() {
-                        Ok(_) => {}
-                        // Recreate the swap_chain if lost
-                        Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                        Err(wgpu::SurfaceError::OutOfMemory) => event_loop_window_target.exit(),
-                        Err(e) => eprintln!("Some unhandled error {:?}", e),
-                    }
-                }
-                _ => {}
-            }
-        }
-        _ => {}
-    }).unwrap()
+    let mut app = block_on(App::new(window, NonZeroU32::new(sample_count).unwrap()));
 }
