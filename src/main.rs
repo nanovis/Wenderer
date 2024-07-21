@@ -1,10 +1,11 @@
 use std::num::NonZeroU32;
+use std::sync::Arc;
 
 use cgmath::Matrix4;
 use futures::executor::block_on;
 use half::f16;
 use rayon::prelude::*;
-use wgpu::{CompositeAlphaMode, Extent3d, MemoryHints, SurfaceConfiguration, SurfaceTarget, TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension};
+use wgpu::{CompositeAlphaMode, Extent3d, MemoryHints, SurfaceConfiguration, TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use winit::{
     event::*,
     event_loop::EventLoop,
@@ -12,17 +13,26 @@ use winit::{
 };
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event_loop::ActiveEventLoop;
+use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::keyboard::KeyCode;
 use winit::keyboard::PhysicalKey::Code;
 use winit::window::WindowId;
+
 use wenderer::rendering::{Camera, CanvasPass, D3Pass, RenderPass};
 use wenderer::shading::Tex;
 use wenderer::utils::{CameraController, load_volume_data};
 
-struct App<'w> {
-    window: Window,
-    surface: wgpu::Surface<'w>,
+/// This is 1 because render buffer textures for front-face and back-face rendering is the resolved target
+/// not the multisampled target
+const FACE_RENDER_BUFFER_SAMPLE_COUNT: u32 = 1;
+
+struct RenderConfigs {
+    sample_count: NonZeroU32,
+}
+
+struct RenderState {
+    window: Arc<Window>,
+    surface: wgpu::Surface<'static>,
     surface_configs: SurfaceConfiguration,
     surface_view_desc: TextureViewDescriptor<'static>,
     device: wgpu::Device,
@@ -38,18 +48,13 @@ struct App<'w> {
     canvas_pass: CanvasPass,
 }
 
-impl<'w> App<'w> {
-    /// This is 1 because render buffer textures for front-face and back-face rendering is the resolved target
-    /// not the multisampled target
-    const FACE_RENDER_BUFFER_SAMPLE_COUNT: u32 = 1;
-
-    // need async because we need to await some struct creation here
-    async fn new(window: Window, sample_count: NonZeroU32) -> Self {
+impl RenderState {
+    async fn new(window: Arc<Window>, sample_count: NonZeroU32) -> Self {
         let size = window.inner_size();
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::default();
-        let surface = instance.create_surface(&window).expect("Failed to create surface");
+        let surface = instance.create_surface(window.clone()).expect("Failed to create surface");
         // need adapter to create the device and queue
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -129,7 +134,7 @@ impl<'w> App<'w> {
             (size.width, size.height),
             &device,
             Some("Front face render buffer texture"),
-            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            NonZeroU32::new(FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
             &face_buffer_format,
         );
         let front_face_pass = D3Pass::new(
@@ -146,7 +151,7 @@ impl<'w> App<'w> {
             (size.width, size.height),
             &device,
             Some("Back face render buffer texture"),
-            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            NonZeroU32::new(FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
             &face_buffer_format,
         );
         let back_face_pass = D3Pass::new(
@@ -181,121 +186,145 @@ impl<'w> App<'w> {
             camera_controller: CameraController::new(0.2),
             cube_scaling,
             front_face_pass,
-            back_face_pass,
             front_face_render_buffer,
+            back_face_pass,
             back_face_render_buffer,
             canvas_pass,
+        }
+    }
+}
+
+struct App {
+    render_configs: RenderConfigs,
+    render_state: Option<RenderState>,
+}
+
+impl App {
+    // need async because we need to await some struct creation here
+    fn new(render_configs: RenderConfigs) -> Self {
+        Self {
+            render_configs,
+            render_state: None,
         }
     }
 
     // If we want to support resizing in our application, we're going to need to recreate the swap_chain everytime the window's size changes.
     // That's the reason we stored the physical size and the sc_desc used to create the swap chain.
     fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        self.size = new_size;
-        self.surface_configs.width = new_size.width;
-        self.surface_configs.height = new_size.height;
+        let rs = self.render_state.as_mut().unwrap();
+        rs.size = new_size;
+        rs.surface_configs.width = new_size.width;
+        rs.surface_configs.height = new_size.height;
 
-        self.camera.aspect = self.size.width as f32 / self.size.height as f32;
-        self.surface.configure(&self.device, &self.surface_configs);
-        self.front_face_pass
-            .resize(&self.device, self.size.width, self.size.height);
-        self.back_face_pass
-            .resize(&self.device, self.size.width, self.size.height);
-        self.front_face_pass.update_model_view_proj_uniform(
-            self.cube_scaling.clone(),
-            &self.camera,
-            &self.queue,
+        rs.camera.aspect = rs.size.width as f32 / rs.size.height as f32;
+        rs.surface.configure(&rs.device, &rs.surface_configs);
+        rs.front_face_pass
+            .resize(&rs.device, rs.size.width, rs.size.height);
+        rs.back_face_pass
+            .resize(&rs.device, rs.size.width, rs.size.height);
+        rs.front_face_pass.update_model_view_proj_uniform(
+            rs.cube_scaling.clone(),
+            &rs.camera,
+            &rs.queue,
         );
-        self.back_face_pass.update_model_view_proj_uniform(
-            self.cube_scaling.clone(),
-            &self.camera,
-            &self.queue,
+        rs.back_face_pass.update_model_view_proj_uniform(
+            rs.cube_scaling.clone(),
+            &rs.camera,
+            &rs.queue,
         );
-        self.canvas_pass
-            .resize(&self.device, self.size.width, self.size.height);
+        rs.canvas_pass
+            .resize(&rs.device, rs.size.width, rs.size.height);
 
-        self.front_face_render_buffer = Tex::create_render_buffer(
-            (self.size.width, self.size.height),
-            &self.device,
+        rs.front_face_render_buffer = Tex::create_render_buffer(
+            (rs.size.width, rs.size.height),
+            &rs.device,
             Some("Front Face Render Buffer"),
-            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
-            &self.front_face_render_buffer.format,
+            NonZeroU32::new(FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            &rs.front_face_render_buffer.format,
         );
-        self.back_face_render_buffer = Tex::create_render_buffer(
-            (self.size.width, self.size.height),
-            &self.device,
+        rs.back_face_render_buffer = Tex::create_render_buffer(
+            (rs.size.width, rs.size.height),
+            &rs.device,
             Some("Back Face Render Buffer"),
-            NonZeroU32::new(Self::FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
-            &self.back_face_render_buffer.format,
+            NonZeroU32::new(FACE_RENDER_BUFFER_SAMPLE_COUNT).unwrap(),
+            &rs.back_face_render_buffer.format,
         );
-        self.canvas_pass.change_bound_face_textures(
-            &self.device,
-            &self.front_face_render_buffer,
-            &self.back_face_render_buffer,
+        rs.canvas_pass.change_bound_face_textures(
+            &rs.device,
+            &rs.front_face_render_buffer,
+            &rs.back_face_render_buffer,
         );
     }
     // input() returns a bool to indicate whether an event has been fully processed.
     // If the method returns true, the main loop won't process the event any further.
     fn input(&mut self, event: &KeyEvent) -> bool {
-        self.camera_controller.process_events(event)
+        self.render_state.as_mut().unwrap().camera_controller.process_events(event)
     }
+
     fn update(&mut self) {
-        self.camera_controller.update_camera(&mut self.camera);
-        self.front_face_pass.update_model_view_proj_uniform(
-            self.cube_scaling.clone(),
-            &self.camera,
-            &self.queue,
+        let rs = self.render_state.as_mut().unwrap();
+        rs.camera_controller.update_camera(&mut rs.camera);
+        rs.front_face_pass.update_model_view_proj_uniform(
+            rs.cube_scaling.clone(),
+            &rs.camera,
+            &rs.queue,
         );
-        self.back_face_pass.update_model_view_proj_uniform(
-            self.cube_scaling.clone(),
-            &self.camera,
-            &self.queue,
+        rs.back_face_pass.update_model_view_proj_uniform(
+            rs.cube_scaling.clone(),
+            &rs.camera,
+            &rs.queue,
         );
     }
     // We also need to create a CommandEncoder to create the actual commands to send to the gpu.
     // Most modern graphics frameworks expect commands to be stored in a command buffer before being sent to the gpu.
     // The encoder builds a command buffer that we can then send to the gpu.
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let frame = self.surface.get_current_texture()?;
-        let frame_tex_view = frame.texture.create_view(&self.surface_view_desc);
-        let mut encoder = self
+        let render_state = self.render_state.as_mut().unwrap();
+        let frame = render_state.surface.get_current_texture()?;
+        let frame_tex_view = frame.texture.create_view(&render_state.surface_view_desc);
+        let mut encoder = render_state
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
 
-        self.front_face_pass
-            .render(&self.front_face_render_buffer.view, None, &mut encoder);
-        self.back_face_pass
-            .render(&self.back_face_render_buffer.view, None, &mut encoder);
-        self.canvas_pass.render(&frame_tex_view, None, &mut encoder);
-        self.queue.submit(std::iter::once(encoder.finish()));
+        render_state.front_face_pass
+            .render(&render_state.front_face_render_buffer.view, None, &mut encoder);
+        render_state.back_face_pass
+            .render(&render_state.back_face_render_buffer.view, None, &mut encoder);
+        render_state.canvas_pass.render(&frame_tex_view, None, &mut encoder);
+        render_state.queue.submit(std::iter::once(encoder.finish()));
         frame.present();
         Ok(())
     }
 }
 
-impl ApplicationHandler for App<'_> {
+impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes()
             .with_inner_size(PhysicalSize::new(1000, 1000))
             .with_title("WebGPU-based DVR");
-        self.window = event_loop.create_window(window_attributes).unwrap()
+        eprintln!("Resumed");
+        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+        self.render_state = Some(block_on(RenderState::new(window.clone(), self.render_configs.sample_count)));
+        // to trigger the first render
+        window.request_redraw();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
-        if self.window.id() != window_id {
+        let window = self.render_state.as_ref().unwrap().window.clone();
+        if window.id() != window_id {
             return;
         }
         match &event {
             WindowEvent::Resized(physical_size) => self.resize(*physical_size),
             WindowEvent::ScaleFactorChanged { .. } => {
-                self.resize(self.window.inner_size());
+                self.resize(window.inner_size());
             }
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if self.input(event) {
-                    self.window.request_redraw();
+                    window.request_redraw();
                     return;
                 }
                 if event.state.is_pressed() {
@@ -312,7 +341,7 @@ impl ApplicationHandler for App<'_> {
                 match self.render() {
                     Ok(_) => {}
                     // Recreate the swap_chain if lost
-                    Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
+                    Err(wgpu::SurfaceError::Lost) => self.resize(self.render_state.as_ref().unwrap().size),
                     Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
                     Err(e) => eprintln!("Some unhandled error {:?}", e),
                 }
@@ -326,10 +355,10 @@ impl ApplicationHandler for App<'_> {
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new().unwrap();
-    let window_attributes = Window::default_attributes()
-        .with_inner_size(PhysicalSize::new(1000, 1000))
-        .with_title("WebGPU-based DVR");
-    let window = event_loop.create_window(window_attributes).unwrap();
-    let sample_count = 4;
-    let mut app = block_on(App::new(window, NonZeroU32::new(sample_count).unwrap()));
+    event_loop.set_control_flow(ControlFlow::Wait);
+    let render_configs = RenderConfigs {
+        sample_count: NonZeroU32::new(4).unwrap(),
+    };
+    let mut app = App::new(render_configs);
+    event_loop.run_app(&mut app).expect("Failed to run app");
 }
