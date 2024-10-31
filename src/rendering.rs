@@ -174,13 +174,13 @@ impl D3Pass {
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader_module,
-                entry_point: "vertex_shader",
+                entry_point: Some("vertex_shader"),
                 compilation_options: Default::default(),
                 buffers: &[cube.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader_module,
-                entry_point: "fragment_shader",
+                entry_point: Some("fragment_shader"),
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: target_format.clone(),
@@ -571,13 +571,13 @@ impl CanvasPass {
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader_module,
-                entry_point: "vertex_shader",
+                entry_point: Some("vertex_shader"),
                 compilation_options: Default::default(),
                 buffers: &[canvas.vertex_desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader_module,
-                entry_point: "fragment_shader",
+                entry_point: Some("fragment_shader"),
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: tex_format.clone(),

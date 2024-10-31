@@ -1,6 +1,6 @@
 [package]
 name = "wenderer"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["feng liang <feng.liang@kaust.edu.sa>"]
 edition = "2021"
 
@@ -12,7 +12,7 @@ winit = { version = "0.30", features = ["rwh_05"] }
 cgmath = { version = "0.18", features = ["swizzle"] }
 env_logger = "0.11"
 log = "0.4"
-wgpu = "22.0"
+wgpu = "23.0"
 crevice = { version = "0.16", features = ["cgmath"] }
 futures = "0.3"
 anyhow = "1.0"
