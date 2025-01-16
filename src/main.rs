@@ -92,6 +92,7 @@ impl RenderState {
             label: Some("Render Texture View"),
             format: Some(surface_configs.format),
             dimension: Some(TextureViewDimension::D2),
+            usage: None,
             aspect: Default::default(),
             base_mip_level: 0,
             mip_level_count: None,

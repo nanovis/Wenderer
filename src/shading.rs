@@ -48,14 +48,14 @@ impl Tex {
         };
         let texture = device.create_texture(&desc);
         queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
                 aspect: Default::default(),
             },
             bytemuck::cast_slice(flatten_data.as_slice()),
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(length * 4),
                 rows_per_image: Some(1),
@@ -100,14 +100,14 @@ impl Tex {
         };
         let texture = device.create_texture(&desc);
         queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
                 aspect: Default::default(),
             },
             bytemuck::cast_slice(data.as_slice()),
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(2 * size.width),
                 rows_per_image: Some(size.height),
@@ -249,14 +249,14 @@ impl Tex {
         });
 
         queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
                 aspect: Default::default(),
             },
             rgba,
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * dimensions.0),
                 rows_per_image: Some(dimensions.1),
