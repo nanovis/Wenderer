@@ -71,8 +71,8 @@ impl RenderState {
                     required_features: wgpu::Features::empty(), //The device you have limits the features you can use
                     required_limits: wgpu::Limits::default(), //The limits field describes the limit of certain types of resource we can create
                     memory_hints: MemoryHints::Performance,
-                },
-                None,
+                    trace: Default::default(),
+                }
             )
             .await
             .unwrap();
