@@ -8,7 +8,7 @@ edition = "2024"
 
 [dependencies]
 image = "0.25"
-winit = { version = "0.30", features = ["rwh_05"] }
+winit = "0.30"
 cgmath = { version = "0.18", features = ["swizzle"] }
 env_logger = "0.11"
 wgpu = "25.0"
