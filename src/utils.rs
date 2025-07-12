@@ -60,7 +60,7 @@ impl CameraController {
                     self.is_right_pressed = is_pressed;
                     true
                 }
-                _ => false
+                _ => false,
             }
         } else {
             false
@@ -162,9 +162,9 @@ pub fn load_volume_data<P: AsRef<Path>>(
         .par_chunks_exact(2)
         .map(|bytes| u16::from_ne_bytes([bytes[0], bytes[1]]))
         .collect();
-    let x = unsigned_shorts.get(0).unwrap().clone() as usize;
-    let y = unsigned_shorts.get(1).unwrap().clone() as usize;
-    let z = unsigned_shorts.get(2).unwrap().clone() as usize;
+    let x = *unsigned_shorts.first().unwrap() as usize;
+    let y = *unsigned_shorts.get(1).unwrap() as usize;
+    let z = *unsigned_shorts.get(2).unwrap() as usize;
     let expected_data_num = x * y * z;
     const U16MAX_F: f32 = u16::MAX as f32;
     let data: Vec<f32> = unsigned_shorts
@@ -174,7 +174,7 @@ pub fn load_volume_data<P: AsRef<Path>>(
         .collect();
     let uint_data = Vec::from_iter(unsigned_shorts[3..].iter().cloned());
     assert_eq!(expected_data_num, data.len(), "Data size not match");
-    return ((x, y, z), data, uint_data);
+    ((x, y, z), data, uint_data)
 }
 
 pub fn load_example_transfer_function() -> Vec<cgmath::Vector4<u8>> {

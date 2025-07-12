@@ -20,7 +20,7 @@ impl Tex {
     }
 
     pub fn create_1d_texture_rgba8(
-        data: &Vec<cgmath::Vector4<u8>>,
+        data: &[cgmath::Vector4<u8>],
         device: &Device,
         queue: &Queue,
         label: &str,
@@ -38,7 +38,7 @@ impl Tex {
         };
         let desc = TextureDescriptor {
             label: Some(label),
-            size: size.clone(),
+            size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D1,
@@ -60,7 +60,7 @@ impl Tex {
                 bytes_per_row: Some(length * 4),
                 rows_per_image: Some(1),
             },
-            size.clone(),
+            size,
         );
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -82,7 +82,7 @@ impl Tex {
 
     pub fn create_3d_texture_red_f16(
         size: &Extent3d,
-        data: &Vec<f16>,
+        data: &[f16],
         device: &Device,
         queue: &Queue,
         label: &str,
@@ -90,7 +90,7 @@ impl Tex {
         let format = TextureFormat::R16Float;
         let desc = TextureDescriptor {
             label: Some(label),
-            size: size.clone(),
+            size: *size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D3,
@@ -106,13 +106,13 @@ impl Tex {
                 origin: Origin3d::ZERO,
                 aspect: Default::default(),
             },
-            bytemuck::cast_slice(data.as_slice()),
+            bytemuck::cast_slice(data),
             TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(2 * size.width),
                 rows_per_image: Some(size.height),
             },
-            size.clone(),
+            *size,
         );
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -153,7 +153,7 @@ impl Tex {
             mip_level_count: 1,
             sample_count,
             dimension: TextureDimension::D2,
-            format: format.clone(),
+            format,
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
             view_formats: &[format],
         };
@@ -200,9 +200,9 @@ impl Tex {
             mip_level_count: 1,
             sample_count,
             dimension: TextureDimension::D2,
-            format: format.clone(),
+            format: *format,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[format.clone()],
+            view_formats: &[*format],
         });
         let view = texture.create_view(&TextureViewDescriptor::default());
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -217,7 +217,7 @@ impl Tex {
         Self {
             texture,
             view,
-            format: format.clone(),
+            format: *format,
             sampler,
         }
     }
@@ -243,7 +243,7 @@ impl Tex {
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: format.clone(),
+            format,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             view_formats: &[format],
         });

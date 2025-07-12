@@ -39,9 +39,9 @@ pub struct Mesh2 {
 
 impl Mesh2 {
     pub fn new(
-        vertices: &Vec<V3>,
-        indices: &Vec<usize>,
-        attribs_2d: &Vec<V2>,
+        vertices: &[V3],
+        indices: &[usize],
+        attribs_2d: &[V2],
         transform_matrix: Option<Mat4>,
     ) -> Self {
         assert_eq!(vertices.len(), attribs_2d.len());
@@ -70,22 +70,22 @@ impl Mesh2 {
         let index_length = indices.len();
         if vertices.len() <= u16::MAX as usize {
             let indices = indices.iter().map(|x| *x as u16).collect();
-            return Self {
+            Self {
                 vertices: vertices.clone(),
                 indices_u32: vec![],
                 indices_u16: indices,
                 index_format: IndexFormat::Uint16,
                 index_length,
-            };
+            }
         } else {
             let indices = indices.iter().map(|x| *x as u32).collect();
-            return Self {
+            Self {
                 vertices: vertices.clone(),
                 indices_u32: indices,
                 indices_u16: vec![],
                 index_format: IndexFormat::Uint32,
                 index_length,
-            };
+            }
         }
     }
 }
@@ -127,9 +127,9 @@ pub struct Mesh3 {
 
 impl Mesh3 {
     pub fn new(
-        vertices: &Vec<V3>,
-        indices: &Vec<usize>,
-        attribs_3d: &Vec<V3>,
+        vertices: &[V3],
+        indices: &[usize],
+        attribs_3d: &[V3],
         transform_matrix: Option<Mat4>,
     ) -> Self {
         assert_eq!(vertices.len(), attribs_3d.len());
@@ -158,22 +158,22 @@ impl Mesh3 {
         let index_length = indices.len();
         if vertices.len() <= u16::MAX as usize {
             let indices = indices.iter().map(|x| *x as u16).collect();
-            return Self {
+            Self {
                 vertices: vertices.clone(),
                 indices_u32: vec![],
                 indices_u16: indices,
                 index_format: IndexFormat::Uint16,
                 index_length,
-            };
+            }
         } else {
             let indices = indices.iter().map(|x| *x as u32).collect();
-            return Self {
+            Self {
                 vertices: vertices.clone(),
                 indices_u32: indices,
                 indices_u16: vec![],
                 index_format: IndexFormat::Uint32,
                 index_length,
-            };
+            }
         }
     }
 }

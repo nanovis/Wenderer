@@ -1,4 +1,4 @@
-use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
+use cgmath::{Deg, Matrix4, Point3, Vector3, perspective};
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -54,7 +54,7 @@ impl Camera {
     pub fn build_view_projection_matrix(&self, model_transformation: Matrix4<f32>) -> Matrix4<f32> {
         let view = Matrix4::look_at_rh(self.eye, self.center, self.up);
         let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return proj * view * model_transformation;
+        proj * view * model_transformation
     }
 }
 
@@ -92,7 +92,7 @@ impl D3Pass {
                 (render_width, render_height),
                 device,
                 Some("Multisample Buffer"),
-                sample_cnt.clone(),
+                sample_cnt,
                 target_format,
             ))
         } else {
@@ -109,7 +109,7 @@ impl D3Pass {
         let cube = create_cube_fbo();
         // create depth texture
         let depth_texture = Tex::create_depth_texture(
-            &device,
+            device,
             render_width,
             render_height,
             sample_cnt,
@@ -183,7 +183,7 @@ impl D3Pass {
                 entry_point: Some("fragment_shader"),
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
-                    format: target_format.clone(),
+                    format: *target_format,
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: ColorWrites::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 })],
@@ -255,19 +255,18 @@ impl RenderPass for D3Pass {
             device,
             render_width,
             render_height,
-            sample_cnt.clone(),
+            sample_cnt,
             "depth texture",
         );
-        self.multisample_buffer = match self.multisample_buffer {
-            None => None,
-            Some(ref old_buffer) => Some(Tex::create_render_buffer(
+        self.multisample_buffer = self.multisample_buffer.as_ref().map(|old_buffer| {
+            Tex::create_render_buffer(
                 (render_width, render_height),
                 device,
                 Some("Multisample Buffer"),
                 sample_cnt,
                 &old_buffer.format,
-            )),
-        }
+            )
+        })
     }
 
     fn render(
@@ -286,6 +285,7 @@ impl RenderPass for D3Pass {
             color_attachments: &[Some(RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
                 view,
+                depth_slice: None,
                 // The resolve_target is the texture that will receive the resolved output.
                 // This will be the same as `view` unless multisampling is enabled
                 resolve_target,
@@ -303,7 +303,7 @@ impl RenderPass for D3Pass {
             depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                 view: external_depth_view.unwrap_or(&self.depth_texture.view),
                 depth_ops: Some(Operations {
-                    load: self.depth_clear_op.clone(),
+                    load: self.depth_clear_op,
                     store: StoreOp::Store,
                 }),
                 stencil_ops: None,
@@ -580,7 +580,7 @@ impl CanvasPass {
                 entry_point: Some("fragment_shader"),
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
-                    format: tex_format.clone(),
+                    format: *tex_format,
                     blend: Some(BlendState::REPLACE), //specify that the blending should just replace old pixel data with new data
                     write_mask: ColorWrites::ALL, //tell wgpu to write to all colors: red, blue, green, and alpha
                 })],
@@ -651,7 +651,7 @@ impl CanvasPass {
     }
 
     pub fn set_uniforms(&mut self, uniforms: &CanvasShaderUniforms, queue: &Queue) {
-        self.uniforms = uniforms.clone();
+        self.uniforms = *uniforms;
         queue.write_buffer(
             &self.uniform_buffer,
             0,
@@ -690,6 +690,7 @@ impl RenderPass for CanvasPass {
             color_attachments: &[Some(RenderPassColorAttachment {
                 //view informs wgpu what texture to save the colors to
                 view,
+                depth_slice: None,
                 // The resolve_target is the texture that will receive the resolved output.
                 // This will be the same as `view` unless multisampling is enabled
                 resolve_target,
