@@ -23,12 +23,15 @@ pub struct Uniforms {
     model_view_proj: Matrix4<f32>,
 }
 
-impl Uniforms {
-    pub fn new() -> Self {
+impl Default for Uniforms {
+    fn default() -> Self {
         Self {
             model_view_proj: Matrix4::identity(),
         }
     }
+}
+
+impl Uniforms {
     pub fn update_model_view_proj(&mut self, camera: &Camera, model_transformation: Matrix4<f32>) {
         self.model_view_proj = camera.build_view_projection_matrix(model_transformation);
     }

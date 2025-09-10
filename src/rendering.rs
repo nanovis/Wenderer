@@ -23,7 +23,7 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 );
 
 pub trait Geometry {
-    fn vertex_desc(&self) -> VertexBufferLayout;
+    fn vertex_desc(&self) -> VertexBufferLayout<'_>;
     fn get_vertex_raw(&self) -> &[u8];
     fn get_index_raw(&self) -> &[u8];
     fn get_index_format(&self) -> IndexFormat;
@@ -116,7 +116,7 @@ impl D3Pass {
             "depth_texture",
         );
         // create uniforms
-        let mut uniforms = Uniforms::new();
+        let mut uniforms = Uniforms::default();
         uniforms.update_model_view_proj(camera, cube_transformation);
         let uniform_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),

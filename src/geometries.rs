@@ -91,7 +91,7 @@ impl Mesh2 {
 }
 
 impl Geometry for Mesh2 {
-    fn vertex_desc(&self) -> VertexBufferLayout {
+    fn vertex_desc(&self) -> VertexBufferLayout<'_> {
         DEFAULT_VERTEX_LAYOUT
     }
 
@@ -179,7 +179,7 @@ impl Mesh3 {
 }
 
 impl Geometry for Mesh3 {
-    fn vertex_desc(&self) -> VertexBufferLayout {
+    fn vertex_desc(&self) -> VertexBufferLayout<'_> {
         VertexBufferLayout {
             array_stride: size_of::<Vertex3>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
@@ -267,7 +267,7 @@ impl Rectangle {
 }
 
 impl Geometry for Rectangle {
-    fn vertex_desc(&self) -> VertexBufferLayout {
+    fn vertex_desc(&self) -> VertexBufferLayout<'_> {
         self.mesh.vertex_desc()
     }
 
